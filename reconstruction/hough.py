@@ -7,10 +7,10 @@ Based on the algorithm described in Dalitz, Schramke, Jeltsch [2017].
 
 import numpy as np
 
-class line(object):
+class Line(object):
     '''A line in 3D.'''
 
-    def __init__(self, theta, phi, xp, yp):
+    def __init__(self, theta, phi, xp, yp, translation=None):
         '''
             Define a new line using the "Roberts optimal line
             representation."
@@ -38,7 +38,16 @@ class line(object):
               - There are additional ambiguities if the line lies exactly
                 in the x-y plane but I don't think they are relevant.
 
+            If ``translation`` is supplied, the line specified by the
+            other 4 parameters will first be translated by adding the
+            translation vector to each of its points. The resulting line
+            will have parameters which are different from those supplied
+            to this constructor.
+
         '''
+        if translation:
+            theta, phi, xp, yp = Line.applyTranslation(theta, phi, xp, yp,
+                    translation)
         self.theta = theta
         self.phi = phi
         self.xp = xp
@@ -116,7 +125,20 @@ class line(object):
             coordinates of a point on the line.
 
         '''
-        return cls(theta, phi, *compute_xp_yp(theta, phi, px, py, pz))
+        return cls(theta, phi, *cls.compute_xp_yp(theta, phi, px, py, pz))
+
+    @staticmethod
+    def applyTranslation(theta, phi, xp, yp, translation):
+        '''
+            Return the 4 parameters specifying a line which has been
+            translated by the given translation vector.
+
+        '''
+        original = Line(theta, phi, xp, yp)
+        point = original.points('x', 0, 1, 2)[0]
+        px, py, pz = point + translation
+        return (theta, phi, *Line.compute_xp_yp(theta, phi, px, py, pz))
+
 
 def fibonacci_hemisphere(samples):
     '''
@@ -180,7 +202,8 @@ def get_directions(npoints):
 def compute_hough(points, ndirections, npositions):
     '''
         Compute the Hough transformation of the given points and return
-        a tuple of (accumulator array, directions, position bin edges).
+        a tuple of (accumulator array, directions, position bin edges,
+        translation).
 
         The shape of the accumulator array is: (ndirections, npositions,
         npositions).
@@ -190,11 +213,21 @@ def compute_hough(points, ndirections, npositions):
         The position bin edges are returned in an array of length
         npositions + 1 and apply to both the x-prime and y-prime axes.
 
+        The translation is a constant vector which describes how the
+        input points are translated to simplify the Hough transformation
+        computation. To ensure the lines extracted from the accumulator
+        are accurate, you must displace the line specified by
+        (direction, xprime, yprime) by adding the
+        translation vector to each of its points. This is handled
+        automatically by the ``Line`` class if the correct translation
+        vector is passed in to the constructor.
+
     '''
     input_points = points
     test_directions = get_directions(ndirections)
     points, xp_edges, yp_edges = get_xp_yp_edges(input_points,
             npositions)
+    translation = input_points[0] - points[0]
     accumulator = np.zeros((
         len(test_directions),
         len(xp_edges) - 1,
@@ -210,4 +243,4 @@ def compute_hough(points, ndirections, npositions):
                     max_yp_i))
                 accumulator[i, xp_i, yp_i] += 1
 
-    return accumulator, test_directions, xp_edges
+    return accumulator, test_directions, xp_edges, translation

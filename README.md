@@ -13,7 +13,7 @@ points = [(1, 2, 3), (4, 5, 6), ...]
 direction_count = 1000
 position_bin_count = 100
 result = compute_hough(points, trial_directions, position_bin_count)
-accumulator, trial_directions, position_bin_edges = result
+accumulator, trial_directions, position_bin_edges, translation = result
 ```
 
 Extract the parameters of the best fit line:
@@ -37,7 +37,7 @@ yprime = (yprime_low + yprime_high)/2
 Form a line object and retrieve some points along that line:
 
 ```python
-best_line = line(theta, phi, xprime, yprime)
+best_line = line(theta, phi, xprime, yprime, translation)
 
 xmin = -10
 xmax = 10
