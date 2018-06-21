@@ -44,15 +44,48 @@ class line(object):
         self.xp = xp
         self.yp = yp
 
-    def points(self, min_coord, max_coord, coord, npoints):
+    def points(self, coord, min_coord, max_coord, npoints):
         '''
             Return a list of n Cartesian points along the line ranging
             from coord=min_coord to coord=max_coord, where coord='x',
             'y', or 'z'.
 
         '''
-        #TODO
-        pass
+        theta = self.theta
+        phi = self.phi
+        xp = self.xp
+        yp = self.yp
+        sintheta = np.sin(theta)
+        bx = np.cos(phi)*sintheta
+        by = np.sin(phi)*sintheta
+        bz = np.cos(theta)
+        b = np.array([bx, by, bz])
+        A = -(bx * by)/(1 + bz)
+        B = 1 - (bx * bx)/(1 + bz)
+        C = 1 - (by * by)/(1 + bz)
+
+        p0 = xp * np.array([B, A, -bx]) + yp * np.array([A, C, -by])
+        distance = None
+        num_bs_in_range = None
+        if coord == 'x':
+            distance = (p0[0] - min_coord)/bx
+            num_bs_in_range = (max_coord - min_coord)/bx
+        elif coord == 'y':
+            distance = (p0[1] - min_coord)/by
+            num_bs_in_range = (max_coord - min_coord)/by
+        elif coord == 'z':
+            distance = (p0[2] - min_coord)/bz
+            num_bs_in_range = (max_coord - min_coord)/bz
+        else:
+            raise ValueError('Bad coord')
+
+        p1 = p0 - distance * b
+        prefactor = num_bs_in_range/(npoints-1)
+        prefactor_array = (prefactor *
+                np.arange(npoints).reshape((npoints, 1)))
+        jumps = prefactor_array * np.tile(b, (npoints, 1))
+        points = p1 + jumps
+        return points
 
     @staticmethod
     def compute_xp_yp(theta, phi, px, py, pz):
