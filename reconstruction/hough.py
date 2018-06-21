@@ -177,4 +177,4 @@ def compute_hough(points, ndirections, npositions):
                     max_yp_i))
                 accumulator[i, xp_i, yp_i] += 1
 
-    return accumulator
+    return accumulator, test_directions, xp_edges
