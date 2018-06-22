@@ -45,7 +45,7 @@ class Line(object):
             to this constructor.
 
         '''
-        if translation:
+        if translation is not None:
             theta, phi, xp, yp = Line.applyTranslation(theta, phi, xp, yp,
                     translation)
         self.theta = theta
@@ -237,7 +237,7 @@ def compute_hough(points, ndirections, npositions):
 
     for point in points:
         for i, (theta, phi) in enumerate(test_directions):
-                xp, yp = line.compute_xp_yp(theta, phi, *point)
+                xp, yp = Line.compute_xp_yp(theta, phi, *point)
                 xp_i = max(0, min(np.searchsorted(xp_edges, xp)-1, max_xp_i))
                 yp_i = max(0, min(np.searchsorted(yp_edges, yp)-1,
                     max_yp_i))
