@@ -35,7 +35,7 @@ class EventBuilder(object):
                 hits.append(curr_hit)
             elif len(hits) >= EventBuilder.min_ev_len:
                 # collected hits are an event -> return
-                event = Event(evid=self.curr_evid, hits=hits, filename=self.filename)
+                event = Event(evid=self.curr_evid, hits=hits)
                 self.events.append(event)
                 self.curr_evid += 1
                 return event
@@ -47,7 +47,7 @@ class EventBuilder(object):
             self.curr_idx += 1
 
         if len(hits) >= EventBuilder.min_ev_len:
-            event = Event(evid=self.curr_evid, hits=hits, filename=self.filename)
+            event = Event(evid=self.curr_evid, hits=hits)
             self.events.append(event)
             self.curr_evid += 1
             return event

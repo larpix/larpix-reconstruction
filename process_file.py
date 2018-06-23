@@ -1,5 +1,6 @@
 import argparse
 from larpixreco.EventBuilder import EventBuilder
+from larpixreco.Reconstruction import TrackReconstruction, ShowerReconstruction
 from larpixreco.RecoFile import RecoFile
 
 parser = argparse.ArgumentParser()
@@ -18,8 +19,10 @@ showers = []
 while True:
     curr_event = eb.get_next_event()
     
-    track_reco = TrackReconstruction(event)
-    shower_reco = ShowerReconstruction(event)
+    tr = TrackReconstruction(curr_event)
+    track_reco = tr.do_reconstruction()
+    sr = ShowerReconstruction(curr_event)
+    shower_reco = sr.do_reconstruction()
 
     for track in track_reco:
         tracks.append(track)

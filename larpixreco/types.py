@@ -29,8 +29,8 @@ class HitCollection(object):
         self.q = sum(self.get_hit_attr('q'))
 
     def __str__(self):
-        string = '{}(hits=[{}])'.format(self.__class__.__name__, \
-            ', '.join(str(hit) for hit in self.hits), self.filename)
+        string = '{}(hits=[\n\t{}]\n\t)'.format(self.__class__.__name__, \
+            ', \n\t'.join(str(hit) for hit in self.hits))
         return string
 
     def __getitem__(self, key):
