@@ -16,7 +16,9 @@ outfile = RecoFile(outfile)
 curr_event = None
 while True:
     curr_event = eb.get_next_event()
-    
+    if curr_event is None:
+        break
+
     track_reco = TrackReconstruction(curr_event)
     tracks = track_reco.do_reconstruction()
     shower_reco = ShowerReconstruction(curr_event)
@@ -24,8 +26,5 @@ while True:
 
     outfile.queue(tracks, type=TrackReconstruction)
     outfile.queue(showers, type=ShowerReconstruction)
-
-    if curr_event is None:
-        break
 
 outfile.flush()
