@@ -10,7 +10,7 @@ import numpy as np
 class Line(object):
     '''A line in 3D.'''
 
-    def __init__(self, theta, phi, xp, yp, translation=None):
+    def __init__(self, theta, phi, xp, yp):
         '''
             Define a new line using the "Roberts optimal line
             representation."
@@ -38,16 +38,7 @@ class Line(object):
               - There are additional ambiguities if the line lies exactly
                 in the x-y plane but I don't think they are relevant.
 
-            If ``translation`` is supplied, the line specified by the
-            other 4 parameters will first be translated by adding the
-            translation vector to each of its points. The resulting line
-            will have parameters which are different from those supplied
-            to this constructor.
-
         '''
-        if translation is not None:
-            theta, phi, xp, yp = Line.applyTranslation(theta, phi, xp, yp,
-                    translation)
         self.theta = theta
         self.phi = phi
         self.xp = xp
@@ -127,18 +118,80 @@ class Line(object):
         '''
         return cls(theta, phi, *cls.compute_xp_yp(theta, phi, px, py, pz))
 
-    @staticmethod
-    def applyTranslation(theta, phi, xp, yp, translation):
+    @classmethod
+    def applyTranslation(cls, original, translation):
         '''
-            Return the 4 parameters specifying a line which has been
-            translated by the given translation vector.
+            Return a new line which has been translated by the given
+            translation vector.
 
         '''
-        original = Line(theta, phi, xp, yp)
         point = original.points('x', 0, 1, 2)[0]
+        theta, phi = original.theta, original.phi
         px, py, pz = point + translation
-        return (theta, phi, *Line.compute_xp_yp(theta, phi, px, py, pz))
+        xp, yp = Line.compute_xp_yp(theta, phi, px, py, pz)
+        return cls(theta, phi, xp, yp)
 
+    @classmethod
+    def applyScaling(cls, original, scale_factor):
+        '''
+            Return a new line which has been scaled by multiplying each
+            point on the line by the given scaling vector.
+
+        '''
+        original_points = original.points('x', 0, 1, 2)
+        points = original_points * scale_factor
+        direction_vector = points[1] - points[0]
+        vector_norm = np.linalg.norm(direction_vector)
+        direction_vector /= vector_norm
+        direction_vector.shape = (1, 3)
+        theta, phi = cartesian_to_spherical(direction_vector)[0]
+        px, py, pz = points[0]
+        xp, yp = Line.compute_xp_yp(theta, phi, px, py, pz)
+        return cls(theta, phi, xp, yp)
+
+
+def center_translate(points):
+    '''
+        Apply a constant translation so the point cloud is centered at
+        the origin (judging by the distance between xmin and xmax, ymin
+        and ymax, and zmin and zmax).
+
+        The translation vector is computed and then applied according to
+        ``new_points = old_points - translation``.
+
+        Return the translated points, the translation vector, and a
+        function to undo the translation, e.g. ``lambda points: points +
+        translation``.
+
+    '''
+    maxes = points.max(axis=0)
+    mins = points.min(axis=0)
+    translation = 0.5 * (maxes + mins)
+    centered_points = points - translation
+    def undo_translation(new_points):
+        return new_points + translation
+
+    return (centered_points, translation, undo_translation)
+
+def scale_axes(points, max_coord=10):
+    '''
+        Scale each axis independently so that the max coordinates
+        of the point cloud along each axis are max_coord.
+
+        The scale vector is computed then applied according to
+        ``new_points = old_points / scale``.
+
+        Return the scaled points, the scale vector, and a function to
+        undo the scaling, e.g. ``lambda points: points * scale``.
+
+    '''
+    maxes = points.max(axis=0)
+    scale_factor = maxes/max_coord
+    scaled_points = points / scale_factor
+    def undo_scaling(new_points):
+        return new_points * scale_factor
+
+    return (scaled_points, scale_factor, undo_scaling)
 
 def fibonacci_hemisphere(samples):
     '''
@@ -182,22 +235,32 @@ def cartesian_to_spherical(points):
 
 def get_xp_yp_edges(points, nbins):
     '''
-        Given the point cloud, return (centered_cloud, xp_edges,
-        yp_edges).
+        Given the point cloud, return (xp_edges, yp_edges).
 
     '''
     maxes = points.max(axis=0)
     mins = points.min(axis=0)
-    translation = 0.5 * (maxes + mins)
-    centered_points = points - translation
     ranges = 0.5 * (maxes - mins)
     range_dist = np.linalg.norm(ranges)
     xp_edges = np.linspace(-range_dist, range_dist, nbins+1)
     yp_edges = xp_edges.copy()
-    return centered_points, xp_edges, yp_edges
+    return xp_edges, yp_edges
 
 def get_directions(npoints):
     return cartesian_to_spherical(fibonacci_hemisphere(npoints))
+
+def get_line(dir_i, xp_i, yp_i, dirs, xp, yp, translation, scale):
+    '''
+        Return the Line specified by the given direction, xprime,
+        yprime, translation and scale.
+
+    '''
+    theta, phi = dirs[dir_i]
+    xp, yp = xp[xp_i], yp[yp_i]
+    raw_line = Line(theta, phi, xp, yp)
+    undo_scaling = Line.applyScaling(raw_line, scale)
+    line = Line.applyTranslation(undo_scaling, translation)
+    return line
 
 def compute_hough(points, ndirections, npositions):
     '''
@@ -225,9 +288,10 @@ def compute_hough(points, ndirections, npositions):
     '''
     input_points = points
     test_directions = get_directions(ndirections)
-    points, xp_edges, yp_edges = get_xp_yp_edges(input_points,
-            npositions)
-    translation = input_points[0] - points[0]
+
+    points, translation, undo_translation = center_translate(input_points)
+    points, scale_factor, undo_scaling = scale_axes(points)
+    xp_edges, yp_edges = get_xp_yp_edges(points, npositions)
     accumulator = np.zeros((
         len(test_directions),
         len(xp_edges) - 1,
@@ -243,4 +307,4 @@ def compute_hough(points, ndirections, npositions):
                     max_yp_i))
                 accumulator[i, xp_i, yp_i] += 1
 
-    return accumulator, test_directions, xp_edges, translation
+    return accumulator, test_directions, xp_edges, translation, scale_factor
