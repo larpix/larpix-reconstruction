@@ -14,20 +14,13 @@ eb = EventBuilder(infile)
 outfile = RecoFile(outfile)
 
 curr_event = None
-tracks = []
-showers = []
 while True:
     curr_event = eb.get_next_event()
     
-    tr = TrackReconstruction(curr_event)
-    track_reco = tr.do_reconstruction()
-    sr = ShowerReconstruction(curr_event)
-    shower_reco = sr.do_reconstruction()
-
-    for track in track_reco:
-        tracks.append(track)
-    for shower in shower_reco:
-        showers.append(shower)
+    track_reco = TrackReconstruction(curr_event)
+    tracks = track_reco.do_reconstruction()
+    shower_reco = ShowerReconstruction(curr_event)
+    showers = shower_reco.do_reconstruction()
 
     outfile.queue(tracks, type=TrackReconstruction)
     outfile.queue(showers, type=ShowerReconstruction)
