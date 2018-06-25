@@ -87,6 +87,26 @@ class Line(object):
         points = p1 + jumps
         return points
 
+    def distance_to(self, point):
+        '''
+            Return the perpendicular distance of this line to the given
+            point.
+
+        '''
+        point_on_line = self.points('x', point[0], point[0] + 10, 2)[0]
+        sintheta = np.sin(theta)
+        bx = np.cos(phi)*sintheta
+        by = np.sin(phi)*sintheta
+        bz = np.cos(theta)
+        direction = np.array([bx, by, bz])
+        first_part = point_on_line - point
+        second_part = np.dot(direction, first_part) * direction
+        vector = first_part - second_part
+        distance = np.lapack.norm(vector)
+        return distance
+
+
+
     @staticmethod
     def compute_xp_yp(theta, phi, px, py, pz):
         '''
