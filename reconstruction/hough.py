@@ -269,17 +269,16 @@ def get_xp_yp_edges(points, nbins):
 def get_directions(npoints):
     return cartesian_to_spherical(fibonacci_hemisphere(npoints))
 
-def get_line(dir_i, xp_i, yp_i, dirs, xp, yp, translation, scale):
+def get_line(dir_i, xp_i, yp_i, dirs, xp, yp, translation):
     '''
         Return the Line specified by the given direction, xprime,
-        yprime, translation and scale.
+        yprime, and translation.
 
     '''
     theta, phi = dirs[dir_i]
     xp, yp = xp[xp_i], yp[yp_i]
     raw_line = Line(theta, phi, xp, yp)
-    undo_scaling = Line.applyScaling(raw_line, scale)
-    line = Line.applyTranslation(undo_scaling, translation)
+    line = Line.applyTranslation(raw_line, translation)
     return line
 
 def compute_hough(points, ndirections, npositions):
@@ -287,6 +286,9 @@ def compute_hough(points, ndirections, npositions):
         Compute the Hough transformation of the given points and return
         a tuple of (accumulator array, directions, position bin edges,
         translation).
+
+        The input points should have all 3 axes using the same
+        units/dimensions.
 
         The shape of the accumulator array is: (ndirections, npositions,
         npositions).
@@ -302,15 +304,13 @@ def compute_hough(points, ndirections, npositions):
         are accurate, you must displace the line specified by
         (direction, xprime, yprime) by adding the
         translation vector to each of its points. This is handled
-        automatically by the ``Line`` class if the correct translation
-        vector is passed in to the constructor.
+        by the ``Line.applyTranslation`` function.
 
     '''
     input_points = points
     test_directions = get_directions(ndirections)
 
     points, translation, undo_translation = center_translate(input_points)
-    points, scale_factor, undo_scaling = scale_axes(points)
     xp_edges, yp_edges = get_xp_yp_edges(points, npositions)
     accumulator = np.zeros((
         len(test_directions),
@@ -327,4 +327,4 @@ def compute_hough(points, ndirections, npositions):
                     max_yp_i))
                 accumulator[i, xp_i, yp_i] += 1
 
-    return accumulator, test_directions, xp_edges, translation, scale_factor
+    return accumulator, test_directions, xp_edges, translation

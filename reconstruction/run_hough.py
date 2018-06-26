@@ -16,12 +16,14 @@ def load_points(filename):
     '''
     with open(filename, 'r') as f:
         data = json.load(f)
-    data = np.array(data)
+    data = np.array(data, dtype=float)
     points = data[:, (3, 4, 8)]
     points[:,2] -= points[0,2]
+    points[:,2] /= 1000.0
+    points[:, :2] /= 10.0
     return points
 
-def get_best_line(accumulator, directions, bins, translation, scale):
+def get_best_line(accumulator, directions, bins, translation):
     '''
         Return the line specified by the maximum bin in the accumulator.
 
@@ -30,7 +32,7 @@ def get_best_line(accumulator, directions, bins, translation, scale):
             accumulator.shape)
     dir_i, xp_i, yp_i = indices
     line = hough.get_line(dir_i, xp_i, yp_i, directions, bins, bins,
-            translation, scale)
+            translation)
     return line
 
 def points_close_to_line(points, line, dr):
