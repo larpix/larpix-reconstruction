@@ -28,16 +28,19 @@ class HitParser(object):
         self.ncols = self.data.shape[1]
 
     def get_row_data(self, row_idx):
+        ''' Fetch 1D array associated with specified row '''
         if row_idx >= self.nrows:
             return None
         return self.data[row_idx]
 
     def get_row_attr(self, row_idx, attr):
+        ''' Fetch value in data specified by row and column name '''
         if row_idx >= self.nrows:
             return None
         return self.get_row_data(row_idx)[HitParser._name2col_map[attr]]
 
     def get_hit(self, row_idx):
+        ''' Create a hit corresponding to the specified row '''
         row_data = self.get_row_data(row_idx)
         if row_data is None:
             return None

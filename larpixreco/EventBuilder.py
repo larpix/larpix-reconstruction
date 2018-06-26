@@ -14,6 +14,13 @@ class EventBuilder(object):
         self.events = []
 
     @staticmethod
+    def is_associated(hit, hits_to_compare):
+        ''' Check if hit should be associated with a list of hits '''
+        if not EventBuilder.is_consecutive(hit, hits_to_compare):
+            return False
+        return True
+
+    @staticmethod
     def is_consecutive(hit, hits_to_compare):
         ''' Check if hit is within `EventBuilder.dt_cut` of any hit in list '''
         if hit is None:
@@ -25,20 +32,29 @@ class EventBuilder(object):
                 return True
         return False
 
+    @staticmethod
+    def is_event(hits):
+        if len(hits) < EventBuilder.min_ev_len:
+            return False
+        return True
+
+    def store_new_event(self, hits):
+        event = Event(evid=self.curr_evid, hits=hits)
+        self.events.append(event)
+        self.curr_evid += 1
+        return event
+
     def get_next_event(self):
         ''' Parse data file until a new event is found '''
         hits = []
         while len(hits) < EventBuilder.max_ev_len:
             curr_hit = self.data.get_hit(self.curr_idx)
-            if EventBuilder.is_consecutive(curr_hit, hits):
-                # hit is near others (in time) -> store and continue
+            if EventBuilder.is_associated(curr_hit, hits):
+                # hit should be associated with others -> store and continue
                 hits.append(curr_hit)
-            elif len(hits) >= EventBuilder.min_ev_len:
+            elif EventBuilder.is_event(hits):
                 # collected hits are an event -> return
-                event = Event(evid=self.curr_evid, hits=hits)
-                self.events.append(event)
-                self.curr_evid += 1
-                return event
+                return self.store_new_event(hits=hits)
             else:
                 hits = []
             
@@ -46,11 +62,9 @@ class EventBuilder(object):
                 break
             self.curr_idx += 1
 
-        if len(hits) >= EventBuilder.min_ev_len:
-            event = Event(evid=self.curr_evid, hits=hits)
-            self.events.append(event)
-            self.curr_evid += 1
-            return event
+        if EventBuilder.is_event(hits):
+            # remaining hits are an event -> return
+            return self.store_new_event(hits=hits)
         else:
             return None
 
