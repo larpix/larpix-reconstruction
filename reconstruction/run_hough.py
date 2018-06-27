@@ -68,7 +68,7 @@ def split_by_distance(points, line, dr):
     farther[:] = points[mask]
     return closer, farther, mask
 
-def get_fit_line(points, start_line, dr):
+def fit_line(points, start_line, dr):
     '''
         Return the best fit line determined by least-squares fit to the
         points within dr of start_line.
@@ -87,8 +87,28 @@ def get_fit_line(points, start_line, dr):
     directions = hough.cartesian_to_spherical(direction_norm.reshape((1,
         3)))
     theta, phi = directions[0]
-    fit_line = hough.Line.fromDirPoint(theta, phi, *anchor)
-    return fit_line
+    best_fit_line = hough.Line.fromDirPoint(theta, phi, *anchor)
+    return best_fit_line
+
+def get_fit_line(points, params):
+    '''
+        Return the best fit line determined by least-squares fit to the
+        points identified by the Hough parameters.
+
+        The line identified by the accumulator bin with the most votes
+        is taken as the guess. The x-prime/y-prime bin spacing is taken
+        as the dr distance.
+
+        Points within dr of the guess line are fed in to the
+        least-squares fitter. The best fit line is returned as a
+        ``Line`` object.
+
+    '''
+    guess_line = get_best_line(params)
+    bins = params.position_bins
+    dr = bins[1] - bins[0]
+    best_fit_line = fit_line(points, guess_line, dr)
+    return best_fit_line
 
 def get_best_track(filename):
     '''
@@ -103,9 +123,6 @@ def get_best_track(filename):
     params.ndirections = 1000
     params.npositions = 30
     params = hough.compute_hough(points, params)
-    guess_line = get_best_line(params)
-    bins = params.position_bins
-    dr = bins[1] - bins[0]
-    fit_line = get_fit_line(points, guess_line, dr)
-    closer, farther, mask = split_by_distance(points, fit_line, dr)
-    return fit_line, points, closer, mask, params
+    best_fit_line = get_fit_line(points, params)
+    closer, farther, mask = split_by_distance(points, best_fit_line, dr)
+    return best_fit_line, points, closer, mask, params
