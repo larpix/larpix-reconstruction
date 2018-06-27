@@ -23,16 +23,17 @@ def load_points(filename):
     points[:, :2] /= 10.0
     return points
 
-def get_best_line(accumulator, directions, bins, translation):
+def get_best_line(params):
     '''
         Return the line specified by the maximum bin in the accumulator.
 
     '''
-    indices = np.unravel_index(np.argmax(accumulator),
-            accumulator.shape)
+    indices = np.unravel_index(np.argmax(params.accumulator),
+            params.accumulator.shape)
     dir_i, xp_i, yp_i = indices
-    line = hough.get_line(dir_i, xp_i, yp_i, directions, bins, bins,
-            translation)
+    bins = params.position_bins
+    line = hough.get_line(dir_i, xp_i, yp_i, params.directions, bins, bins,
+            params.translation)
     return line
 
 def points_close_to_line(points, line, dr):
@@ -94,14 +95,17 @@ def get_best_track(filename):
         Fit a straight line to the points in the file using a Hough
         transformation and least-squares fit.
 
-        Returns (Line, points, close_points, mask).
+        Returns (Line, points, close_points, mask, params).
 
     '''
     points = load_points(filename)
-    result = hough.compute_hough(points, 1000, 30)
-    guess_line = get_best_line(*result)
-    bins = result[2]
+    params = hough.HoughParameters()
+    params.ndirections = 1000
+    params.npositions = 30
+    params = hough.compute_hough(points, params)
+    guess_line = get_best_line(params)
+    bins = params.position_bins
     dr = bins[1] - bins[0]
     fit_line = get_fit_line(points, guess_line, dr)
     closer, farther, mask = split_by_distance(points, fit_line, dr)
-    return fit_line, points, closer, mask
+    return fit_line, points, closer, mask, params

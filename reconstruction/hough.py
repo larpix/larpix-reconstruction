@@ -304,11 +304,24 @@ def cov_evals_evecs(points):
     evals = evals[order]
     return evals, evecs
 
-def compute_hough(points, ndirections, npositions, acc_in=None, op='+'):
+class HoughParameters(object):
+    '''
+        Keep track of the parameters used for a series of Hough
+        transforms.
+
+    '''
+    def __init__(self):
+        self.ndirections = None
+        self.npositions = None
+        self.directions = None
+        self.position_bins = None
+        self.translation = None
+        self.accumulator = None
+
+def compute_hough(points, params, op='+'):
     '''
         Compute the Hough transformation of the given points and return
-        a tuple of (accumulator array, directions, position bin edges,
-        translation).
+        an updated Parameters object.
 
         The input points should have all 3 axes using the same
         units/dimensions.
@@ -331,21 +344,35 @@ def compute_hough(points, ndirections, npositions, acc_in=None, op='+'):
 
     '''
     input_points = points
-    test_directions = get_directions(ndirections)
-
-    points, translation, undo_translation = center_translate(input_points)
-    xp_edges, yp_edges = get_xp_yp_edges(points, npositions)
-    accumulator = None
-    if acc_in is not None:
-        if acc_in.shape == (ndirections, npositions, npositions):
-            accumulator = acc_in
-        else:
-            raise ValueError('Invalid shape for input accumulator')
+    test_directions = None
+    if params.directions is None:
+        test_directions = get_directions(params.ndirections)
+        params.directions = test_directions
     else:
-        accumulator = np.zeros((
+        test_directions = params.directions
+
+    if params.translation is None:
+        points, translation, undo_translation = center_translate(input_points)
+        params.translation = translation
+    else:
+        points = input_points - params.translation
+    xp_edges = None
+    yp_edges = None
+    if params.position_bins is None:
+        xp_edges, yp_edges = get_xp_yp_edges(points, params.npositions)
+        params.position_bins = xp_edges
+    else:
+        xp_edges = params.position_bins
+        yp_edges = params.position_bins
+    accumulator = None
+    if params.accumulator is None:
+        params.accumulator = np.zeros((
             len(test_directions),
             len(xp_edges) - 1,
             len(yp_edges) - 1))
+        accumulator = params.accumulator
+    else:
+        accumulator = params.accumulator
     max_xp_i = accumulator.shape[1] - 1
     max_yp_i = accumulator.shape[2] - 1
 
@@ -362,4 +389,4 @@ def compute_hough(points, ndirections, npositions, acc_in=None, op='+'):
                 else:
                     raise ValueError('Invalid op (must be "+" or "-")')
 
-    return accumulator, test_directions, xp_edges, translation
+    return params
