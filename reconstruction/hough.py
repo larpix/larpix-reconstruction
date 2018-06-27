@@ -94,6 +94,8 @@ class Line(object):
 
         '''
         point_on_line = self.points('x', point[0], point[0] + 10, 2)[0]
+        theta = self.theta
+        phi = self.phi
         sintheta = np.sin(theta)
         bx = np.cos(phi)*sintheta
         by = np.sin(phi)*sintheta
@@ -102,7 +104,7 @@ class Line(object):
         first_part = point_on_line - point
         second_part = np.dot(direction, first_part) * direction
         vector = first_part - second_part
-        distance = np.lapack.norm(vector)
+        distance = np.linalg.norm(vector)
         return distance
 
 
@@ -281,7 +283,28 @@ def get_line(dir_i, xp_i, yp_i, dirs, xp, yp, translation):
     line = Line.applyTranslation(raw_line, translation)
     return line
 
-def compute_hough(points, ndirections, npositions):
+def cov_evals_evecs(points):
+    '''
+        Return the eigenvalues and eigenvectors of the covariance matrix
+        for the specified points.
+
+        Returns (evals, evecs) sorted in descending order by eigenvalue.
+        Note that the numpy convention is that the eigenvector array
+        has shape (ndims, neigenvecs) so that the columns specify
+        eigenvectors and the rows specify x-y-z. This is the opposite
+        convention from the points array where the rows specify the
+        points.
+
+    '''
+    x = points - np.mean(points, axis=0)
+    cov = np.cov(x, rowvar=False)
+    evals, evecs = np.linalg.eigh(cov)
+    order = np.argsort(evals)[::-1]
+    evecs = evecs[:, order]
+    evals = evals[order]
+    return evals, evecs
+
+def compute_hough(points, ndirections, npositions, acc_in=None, op='+'):
     '''
         Compute the Hough transformation of the given points and return
         a tuple of (accumulator array, directions, position bin edges,
@@ -312,10 +335,17 @@ def compute_hough(points, ndirections, npositions):
 
     points, translation, undo_translation = center_translate(input_points)
     xp_edges, yp_edges = get_xp_yp_edges(points, npositions)
-    accumulator = np.zeros((
-        len(test_directions),
-        len(xp_edges) - 1,
-        len(yp_edges) - 1))
+    accumulator = None
+    if acc_in is not None:
+        if acc_in.shape == (ndirections, npositions, npositions):
+            accumulator = acc_in
+        else:
+            raise ValueError('Invalid shape for input accumulator')
+    else:
+        accumulator = np.zeros((
+            len(test_directions),
+            len(xp_edges) - 1,
+            len(yp_edges) - 1))
     max_xp_i = accumulator.shape[1] - 1
     max_yp_i = accumulator.shape[2] - 1
 
@@ -325,6 +355,11 @@ def compute_hough(points, ndirections, npositions):
                 xp_i = max(0, min(np.searchsorted(xp_edges, xp)-1, max_xp_i))
                 yp_i = max(0, min(np.searchsorted(yp_edges, yp)-1,
                     max_yp_i))
-                accumulator[i, xp_i, yp_i] += 1
+                if op == '+':
+                    accumulator[i, xp_i, yp_i] += 1
+                elif op == '-':
+                    accumulator[i, xp_i, yp_i] -= 1
+                else:
+                    raise ValueError('Invalid op (must be "+" or "-")')
 
     return accumulator, test_directions, xp_edges, translation
