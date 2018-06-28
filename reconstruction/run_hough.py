@@ -110,10 +110,13 @@ def get_fit_line(points, params):
     best_fit_line = fit_line(points, guess_line, dr)
     return best_fit_line
 
-def iterate_hough(points, params, undo_points=None):
+def iterate_hough(points, params, threshold, undo_points=None):
     '''
         Compute the next iteration of the Hough transform and return
         (closer, farther, params, mask, line).
+
+        A track must have at least <threshold> points on it. If there is
+        no such track found, return (None, None, params, None, None).
 
         - closer and farther are arrays with the points split by
           distance to the best fit line.
@@ -131,22 +134,41 @@ def iterate_hough(points, params, undo_points=None):
     best_fit_line = get_fit_line(points, params)
     closer, farther, mask = split_by_distance(points, best_fit_line,
             params.dr)
+    if np.max(params.accumulator) < threshold:
+        closer, farther, mask, best_fit_line = None, None, None, None
     return (closer, farther, params, mask, best_fit_line)
 
-def get_best_track(filename):
+def get_best_tracks(filename, threshold=5):
     '''
-        Fit a straight line to the points in the file using a Hough
-        transformation and least-squares fit.
+        Fit straight lines to the points in the file using an iterative
+        Hough transformation and least-squares fit.
 
-        Returns (Line, points, close_points, mask, params).
+        A track must have at least <threshold> points on it.
+
+        Returns ``(lines, points, params)`` where:
+         - ``lines`` is a dict mapping ``Line`` ->  [point_index] (list of
+           indices of corresponding points in the ``points`` array)
+         - ``points`` is a numpy array of shape (npoints, 3) (= x,y,z)
+         - ``params`` is the ``HoughParameters`` object associated with the
+           fit
 
     '''
     points = load_points(filename)
+    do_point_again = [True for point in points]
     params = hough.HoughParameters()
     params.ndirections = 1000
     params.npositions = 30
-    params = hough.compute_hough(points, params)
-    best_fit_line = get_fit_line(points, params)
-    closer, farther, mask = split_by_distance(points, best_fit_line,
-            params.dr)
-    return best_fit_line, points, closer, mask, params
+    lines = {}
+    undo_points = None
+    found_good_line = True
+    while found_good_line:
+        closer, farther, params, mask, best_fit_line = iterate_hough(points,
+                params, threshold, undo_points)
+        found_good_line = (closer is not None)
+        if found_good_line:
+            lines[best_fit_line] = np.where(~mask)[0]
+            undo_points = points[[i for i in lines[best_fit_line] if
+                    do_point_again[i]]]
+            print('found good line with %d points' % len(closer))
+
+    return lines, points, params
