@@ -110,6 +110,29 @@ def get_fit_line(points, params):
     best_fit_line = fit_line(points, guess_line, dr)
     return best_fit_line
 
+def iterate_hough(points, params, undo_points=None):
+    '''
+        Compute the next iteration of the Hough transform and return
+        (closer, farther, params, mask, line).
+
+        - closer and farther are arrays with the points split by
+          distance to the best fit line.
+        - params is the ``HoughParameters`` object to feed to compute_hough
+        - mask is a boolean array specifying which indices in points are
+          in farther (i.e. True means yes, included in farther).
+        - line is the ``Line`` object representing the best fit line
+          from the Hough transformation + least-squares.
+
+    '''
+    if params.accumulator is None and undo_points is None:
+        params = hough.compute_hough(points, params, op='+')
+    else:
+        params = hough.compute_hough(undo_points, params, op='-')
+    best_fit_line = get_fit_line(points, params)
+    closer, farther, mask = split_by_distance(points, best_fit_line,
+            params.dr)
+    return (closer, farther, params, mask, best_fit_line)
+
 def get_best_track(filename):
     '''
         Fit a straight line to the points in the file using a Hough
@@ -124,5 +147,6 @@ def get_best_track(filename):
     params.npositions = 30
     params = hough.compute_hough(points, params)
     best_fit_line = get_fit_line(points, params)
-    closer, farther, mask = split_by_distance(points, best_fit_line, dr)
+    closer, farther, mask = split_by_distance(points, best_fit_line,
+            params.dr)
     return best_fit_line, points, closer, mask, params

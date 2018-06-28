@@ -317,6 +317,7 @@ class HoughParameters(object):
         self.position_bins = None
         self.translation = None
         self.accumulator = None
+        self.dr = None
 
 def compute_hough(points, params, op='+'):
     '''
@@ -361,6 +362,7 @@ def compute_hough(points, params, op='+'):
     if params.position_bins is None:
         xp_edges, yp_edges = get_xp_yp_edges(points, params.npositions)
         params.position_bins = xp_edges
+        params.dr = xp_edges[1] - xp_edges[0]
     else:
         xp_edges = params.position_bins
         yp_edges = params.position_bins
