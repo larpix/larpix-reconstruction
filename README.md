@@ -1,49 +1,47 @@
 LArPix Reconstruction
 ===================
 
-We will figure this thing out
+Get started with your set of points saved in a JSON file. The output of
+larpix-scripts/h52json.py will do nicely. The default direction and
+position resolution supplied in this framework work fine for now.
 
-Get started with your set of points, how many test directions you want,
-and how good your relative position resolution should be.
-
-```python
-import numpy as np
-from hough import *
-points = [(1, 2, 3), (4, 5, 6), ...]
-direction_count = 1000
-position_bin_count = 100
-result = compute_hough(points, trial_directions, position_bin_count)
-accumulator, trial_directions, position_bin_edges, translation = result
-```
-
-Extract the parameters of the best fit line:
+Run the iterative Hough transform algorithm on the points in the file,
+using the threshold to determine how many Hough-space votes are needed
+to accept a track.
 
 ```python
-best_params_i = np.unravel_index(np.argmax(accumulator), accumulator.shape)
-direction_i, xprime_i, yprime_i = best_params_i
-
-best_direction = trial_directions[direction_i]
-theta, phi = best_direction
-
-xprime_low = position_bin_edges[xprime_i]
-xprime_high = position_bin_edges[xprime_i + 1]
-xprime = (xprime_low + xprime_high)/2
-
-yprime_low = position_bin_edges[yprime_i]
-yprime_high = position_bin_edges[yprime_i + 1]
-yprime = (yprime_low + yprime_high)/2
+import run_hough
+lines, points, params = run_hough.get_best_tracks('myfile.json', threshold=15)
 ```
 
-Form a line object and retrieve some points along that line:
+The ``lines`` dict maps ``hough.Line`` objects to a numpy array of the
+points identified as part of the line (using a simple Euclidean distance
+cut). ``points`` is a numpy array of all the points in the file.
+``params`` is a ``hough.HoughParameters`` object which records the basic
+parameters of the Hough transformation.
+
+Note: due to the least-squares fit, the final number
+of points on the track may in principle be below the threshold, or there
+may be a true line which exceeds the threshold but which may not be
+found. These cases are assumed to be rare.
+
+From here you can plot the reconstructed lines:
 
 ```python
-best_line = line(theta, phi, xprime, yprime, translation)
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
-xmin = -10
-xmax = 10
-npoints = 100
-points_along_line = best_line.points('x', xmin, xmax, npoints)
+fig = plt.figure()
+ax = Axes3D(fig)
+
+lines_list = list(lines.keys())
+points_list = list(lines.values())
+for line, points_near_line in zip(lines_list, points_list):
+    points_on_line = line.points('x', 50, 150, 50)
+    ax.scatter(*(points_near_line.T))
+    ax.scatter(*(points_on_line.T))
 ```
+
 ### Line parametrization
 
 While the parametrization of a line on the plane is straightforward, it
