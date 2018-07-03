@@ -107,8 +107,6 @@ class Line(object):
         distance = np.linalg.norm(vector)
         return distance
 
-
-
     @staticmethod
     def compute_xp_yp(theta, phi, px, py, pz):
         '''
@@ -153,24 +151,6 @@ class Line(object):
         xp, yp = Line.compute_xp_yp(theta, phi, px, py, pz)
         return cls(theta, phi, xp, yp)
 
-    @classmethod
-    def applyScaling(cls, original, scale_factor):
-        '''
-            Return a new line which has been scaled by multiplying each
-            point on the line by the given scaling vector.
-
-        '''
-        original_points = original.points('x', 0, 1, 2)
-        points = original_points * scale_factor
-        direction_vector = points[1] - points[0]
-        vector_norm = np.linalg.norm(direction_vector)
-        direction_vector /= vector_norm
-        direction_vector.shape = (1, 3)
-        theta, phi = cartesian_to_spherical(direction_vector)[0]
-        px, py, pz = points[0]
-        xp, yp = Line.compute_xp_yp(theta, phi, px, py, pz)
-        return cls(theta, phi, xp, yp)
-
 
 def center_translate(points):
     '''
@@ -194,26 +174,6 @@ def center_translate(points):
         return new_points + translation
 
     return (centered_points, translation, undo_translation)
-
-def scale_axes(points, max_coord=10):
-    '''
-        Scale each axis independently so that the max coordinates
-        of the point cloud along each axis are max_coord.
-
-        The scale vector is computed then applied according to
-        ``new_points = old_points / scale``.
-
-        Return the scaled points, the scale vector, and a function to
-        undo the scaling, e.g. ``lambda points: points * scale``.
-
-    '''
-    maxes = points.max(axis=0)
-    scale_factor = maxes/max_coord
-    scaled_points = points / scale_factor
-    def undo_scaling(new_points):
-        return new_points * scale_factor
-
-    return (scaled_points, scale_factor, undo_scaling)
 
 def fibonacci_hemisphere(samples):
     '''
