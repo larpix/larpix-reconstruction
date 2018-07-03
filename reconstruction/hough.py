@@ -237,7 +237,7 @@ def get_directions(npoints):
     '''
     return cartesian_to_spherical(fibonacci_hemisphere(npoints))
 
-def get_line(dir_i, xp_i, yp_i, dirs, xp, yp, translation):
+def get_line_from_indices(dir_i, xp_i, yp_i, dirs, xp, yp, translation):
     '''
         Return the Line specified by the given direction, xprime,
         yprime, and translation.
@@ -367,7 +367,7 @@ def compute_hough(points, params, op='+'):
 
     return params
 
-def get_best_line(params):
+def line_accumulator_max(params):
     '''
         Return the line specified by the maximum bin in the accumulator.
 
@@ -376,8 +376,8 @@ def get_best_line(params):
             params.accumulator.shape)
     dir_i, xp_i, yp_i = indices
     bins = params.position_bins
-    line = get_line(dir_i, xp_i, yp_i, params.directions, bins, bins,
-            params.translation)
+    line = get_line_from_indices(dir_i, xp_i, yp_i, params.directions,
+            bins, bins, params.translation)
     return line
 
 def points_close_to_line(points, line, dr):
@@ -412,7 +412,7 @@ def split_by_distance(points, line, dr):
     farther[:] = points[mask]
     return closer, farther, mask
 
-def fit_line(points, start_line, dr):
+def fit_line_least_squares(points, start_line, dr):
     '''
         Return the best fit line determined by least-squares fit to the
         points within dr of start_line.
@@ -448,10 +448,10 @@ def get_fit_line(points, params):
         ``Line`` object.
 
     '''
-    guess_line = get_best_line(params)
+    guess_line = line_accumulator_max(params)
     bins = params.position_bins
     dr = bins[1] - bins[0]
-    best_fit_line = fit_line(points, guess_line, dr)
+    best_fit_line = fit_line_least_squares(points, guess_line, dr)
     return best_fit_line
 
 def iterate_hough(points, params, threshold, undo_points=None):
