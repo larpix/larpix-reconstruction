@@ -454,7 +454,7 @@ def get_fit_line(points, params):
     best_fit_line = fit_line_least_squares(points, guess_line, dr)
     return best_fit_line
 
-def iterate_hough(points, params, threshold, undo_points=None):
+def iterate_hough_once(points, params, threshold, undo_points=None):
     '''
         Compute the next iteration of the Hough transform and return
         (closer, farther, params, mask, line).
@@ -481,3 +481,34 @@ def iterate_hough(points, params, threshold, undo_points=None):
     if np.max(params.accumulator) < threshold:
         closer, farther, mask, best_fit_line = None, None, None, None
     return (closer, farther, params, mask, best_fit_line)
+
+def run_iterative_hough(points, params, threshold):
+    '''
+        Execute the iterative Hough transform on the given points.
+
+        Returns ``(lines, points, params)`` where:
+         - ``lines`` is a dict mapping ``Line`` ->  [point_index] (list of
+           indices of corresponding points in the ``points`` array)
+         - ``points`` is a numpy array of shape (npoints, 3) (= x,y,z)
+         - ``params`` is the ``HoughParameters`` object associated with the
+           fit
+
+    '''
+    lines = {}
+    do_point_again = [True for point in points]
+    undo_points = None
+    found_good_line = True
+    while found_good_line:
+        closer, farther, params, mask, best_fit_line = (
+                iterate_hough_once(points, params, threshold,
+                    undo_points))
+        found_good_line = (closer is not None)
+        if found_good_line:
+            lines[best_fit_line] = np.where(~mask)[0]
+            undo_points = points[[i for i in lines[best_fit_line] if
+                    do_point_again[i]]]
+            for i in lines[best_fit_line]:
+                do_point_again[i] = False
+            print('found good line with %d points' % len(closer))
+
+    return lines, points, params

@@ -39,23 +39,10 @@ def get_best_tracks(filename, threshold=5):
 
     '''
     points = load_points(filename)
-    do_point_again = [True for point in points]
     params = hough.HoughParameters()
     params.ndirections = 1000
     params.npositions = 30
-    lines = {}
-    undo_points = None
-    found_good_line = True
-    while found_good_line:
-        closer, farther, params, mask, best_fit_line = hough.iterate_hough(points,
-                params, threshold, undo_points)
-        found_good_line = (closer is not None)
-        if found_good_line:
-            lines[best_fit_line] = np.where(~mask)[0]
-            undo_points = points[[i for i in lines[best_fit_line] if
-                    do_point_again[i]]]
-            for i in lines[best_fit_line]:
-                do_point_again[i] = False
-            print('found good line with %d points' % len(closer))
-
+    lines, points, params = hough.run_iterative_hough(points, params,
+            threshold)
     return lines, points, params
+
