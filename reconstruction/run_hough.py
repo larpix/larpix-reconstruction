@@ -54,6 +54,8 @@ def get_best_tracks(filename, threshold=5):
             lines[best_fit_line] = np.where(~mask)[0]
             undo_points = points[[i for i in lines[best_fit_line] if
                     do_point_again[i]]]
+            for i in lines[best_fit_line]:
+                do_point_again[i] = False
             print('found good line with %d points' % len(closer))
 
     return lines, points, params
