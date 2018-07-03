@@ -47,7 +47,7 @@ def get_best_tracks(filename, threshold=5):
     undo_points = None
     found_good_line = True
     while found_good_line:
-        closer, farther, params, mask, best_fit_line = iterate_hough(points,
+        closer, farther, params, mask, best_fit_line = hough.iterate_hough(points,
                 params, threshold, undo_points)
         found_good_line = (closer is not None)
         if found_good_line:

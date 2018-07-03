@@ -376,7 +376,7 @@ def get_best_line(params):
             params.accumulator.shape)
     dir_i, xp_i, yp_i = indices
     bins = params.position_bins
-    line = hough.get_line(dir_i, xp_i, yp_i, params.directions, bins, bins,
+    line = get_line(dir_i, xp_i, yp_i, params.directions, bins, bins,
             params.translation)
     return line
 
@@ -425,13 +425,13 @@ def fit_line(points, start_line, dr):
     '''
     closer, farther, mask = split_by_distance(points, start_line, dr)
     anchor = np.mean(closer, axis=0)
-    evals, evecs = hough.cov_evals_evecs(closer)
+    evals, evecs = cov_evals_evecs(closer)
     direction_unnorm = (evecs.T)[0]
     direction_norm = direction_unnorm/np.linalg.norm(direction_unnorm)
-    directions = hough.cartesian_to_spherical(direction_norm.reshape((1,
+    directions = cartesian_to_spherical(direction_norm.reshape((1,
         3)))
     theta, phi = directions[0]
-    best_fit_line = hough.Line.fromDirPoint(theta, phi, *anchor)
+    best_fit_line = Line.fromDirPoint(theta, phi, *anchor)
     return best_fit_line
 
 def get_fit_line(points, params):
@@ -472,9 +472,9 @@ def iterate_hough(points, params, threshold, undo_points=None):
 
     '''
     if params.accumulator is None and undo_points is None:
-        params = hough.compute_hough(points, params, op='+')
+        params = compute_hough(points, params, op='+')
     else:
-        params = hough.compute_hough(undo_points, params, op='-')
+        params = compute_hough(undo_points, params, op='-')
     best_fit_line = get_fit_line(points, params)
     closer, farther, mask = split_by_distance(points, best_fit_line,
             params.dr)
