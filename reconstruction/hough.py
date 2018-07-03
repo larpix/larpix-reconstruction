@@ -228,6 +228,13 @@ def get_xp_yp_edges(points, nbins):
     return xp_edges, yp_edges
 
 def get_directions(npoints):
+    '''
+        Generate ``npoints`` distinct directions which are approximately
+        uniformly distributed using the Fibonacci hemisphere algorithm.
+
+        Returns a 2D array whose rows are [theta, phi].
+
+    '''
     return cartesian_to_spherical(fibonacci_hemisphere(npoints))
 
 def get_line(dir_i, xp_i, yp_i, dirs, xp, yp, translation):
@@ -268,6 +275,22 @@ class HoughParameters(object):
         Keep track of the parameters used for a series of Hough
         transforms.
 
+        The shape of the accumulator array is: (ndirections, npositions,
+        npositions).
+
+        The directions are a 2d array of [theta, prime].
+
+        The position bin edges are an array of length
+        npositions + 1 and apply to both the x-prime and y-prime axes.
+
+        The translation is a constant vector which describes how the
+        input points are translated to simplify the Hough transformation
+        computation. To ensure the lines extracted from the accumulator
+        are accurate, you must displace the line specified by
+        (direction, xprime, yprime) by adding the
+        translation vector to each of its points. This is handled
+        by the ``Line.applyTranslation`` function.
+
     '''
     def __init__(self):
         self.ndirections = None
@@ -283,26 +306,17 @@ def compute_hough(points, params, op='+'):
         Compute the Hough transformation of the given points and return
         an updated Parameters object.
 
-        The input points should have all 3 axes using the same
-        units/dimensions.
+        The input point coordinates should be expressed in the same
+        units/dimensions so that the discretization of parameter space
+        is appropriate for the point cloud geometry.
 
-        The shape of the accumulator array is: (ndirections, npositions,
-        npositions).
-
-        The directions are returned as a 2d array of [theta, prime].
-
-        The position bin edges are returned in an array of length
-        npositions + 1 and apply to both the x-prime and y-prime axes.
-
-        The translation is a constant vector which describes how the
-        input points are translated to simplify the Hough transformation
-        computation. To ensure the lines extracted from the accumulator
-        are accurate, you must displace the line specified by
-        (direction, xprime, yprime) by adding the
-        translation vector to each of its points. This is handled
-        by the ``Line.applyTranslation`` function.
+        If ``op == '+'``, then each vote for a specific line adds to the
+        accumulator array. If ``op == '-'``, then each vote subtracts
+        from the accumulator array. The latter option is useful when
+        running the iterative algorithm.
 
     '''
+    # Prepare the data and accumulator array
     input_points = points
     test_directions = None
     if params.directions is None:
@@ -337,6 +351,7 @@ def compute_hough(points, params, op='+'):
     max_xp_i = accumulator.shape[1] - 1
     max_yp_i = accumulator.shape[2] - 1
 
+    # Compute the Hough transformation
     for point in points:
         for i, (theta, phi) in enumerate(test_directions):
                 xp, yp = compute_xp_yp(theta, phi, *point)
