@@ -107,28 +107,6 @@ class Line(object):
         distance = np.linalg.norm(vector)
         return distance
 
-    @staticmethod
-    def compute_xp_yp(theta, phi, px, py, pz):
-        '''
-            Compute xp and yp given the direction vector's angles and the
-            (unprimed) coordinates of any point on the line, compute xp and
-            yp.
-
-        '''
-        sintheta = np.sin(theta)
-        bx = np.cos(phi)*sintheta
-        by = np.sin(phi)*sintheta
-        bz = np.cos(theta)
-
-        A = (bx * by)/(1 + bz)
-        B = 1 - (bx * bx)/(1 + bz)
-        C = 1 - (by * by)/(1 + bz)
-
-        xp = B * px - A * py - bx * pz
-        yp = -A * px + C * py - by * pz
-
-        return (xp, yp)
-
     @classmethod
     def fromDirPoint(cls, theta, phi, px, py, pz):
         '''
@@ -136,7 +114,7 @@ class Line(object):
             coordinates of a point on the line.
 
         '''
-        return cls(theta, phi, *cls.compute_xp_yp(theta, phi, px, py, pz))
+        return cls(theta, phi, *compute_xp_yp(theta, phi, px, py, pz))
 
     @classmethod
     def applyTranslation(cls, original, translation):
@@ -148,9 +126,30 @@ class Line(object):
         point = original.points('x', 0, 1, 2)[0]
         theta, phi = original.theta, original.phi
         px, py, pz = point + translation
-        xp, yp = Line.compute_xp_yp(theta, phi, px, py, pz)
+        xp, yp = compute_xp_yp(theta, phi, px, py, pz)
         return cls(theta, phi, xp, yp)
 
+
+def compute_xp_yp(theta, phi, px, py, pz):
+    '''
+        Compute xp and yp given the direction vector's angles and the
+        (unprimed) coordinates of any point on the line, compute xp and
+        yp.
+
+    '''
+    sintheta = np.sin(theta)
+    bx = np.cos(phi)*sintheta
+    by = np.sin(phi)*sintheta
+    bz = np.cos(theta)
+
+    A = (bx * by)/(1 + bz)
+    B = 1 - (bx * bx)/(1 + bz)
+    C = 1 - (by * by)/(1 + bz)
+
+    xp = B * px - A * py - bx * pz
+    yp = -A * px + C * py - by * pz
+
+    return (xp, yp)
 
 def center_translate(points):
     '''
@@ -340,7 +339,7 @@ def compute_hough(points, params, op='+'):
 
     for point in points:
         for i, (theta, phi) in enumerate(test_directions):
-                xp, yp = Line.compute_xp_yp(theta, phi, *point)
+                xp, yp = compute_xp_yp(theta, phi, *point)
                 xp_i = max(0, min(np.searchsorted(xp_edges, xp)-1, max_xp_i))
                 yp_i = max(0, min(np.searchsorted(yp_edges, yp)-1,
                     max_yp_i))
