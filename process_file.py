@@ -18,6 +18,8 @@ while True:
     curr_event = eb.get_next_event()
     if curr_event is None:
         break
+    if curr_event.evid % 100 == 0:
+        print('ev {} hit {}/{}'.format(curr_event.evid, eb.data.sort_buffer_idx, eb.data.nrows),end='\r')
 
     track_reco = TrackReconstruction(curr_event)
     tracks = track_reco.do_reconstruction()

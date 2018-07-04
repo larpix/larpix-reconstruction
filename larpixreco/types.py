@@ -1,8 +1,7 @@
 class Hit(object):
     ''' The basic primitive type used in larpix-reconstruction represents a single trigger of a larpix channel '''
 
-    def __init__(self, hid, px, py, ts, q, iochain=None, chipid=None, channelid=None, geom=None):
-        self.hid = hid
+    def __init__(self, px, py, ts, q, iochain=None, chipid=None, channelid=None, geom=None):
         self.px = px
         self.py = py
         self.ts = ts
@@ -13,7 +12,7 @@ class Hit(object):
         self.geom = geom
 
     def __str__(self):
-        string = 'Hit(hid={hid}, px={px}, py={py}, ts={ts}, q={q}, iochain={iochain}, '\
+        string = 'Hit(px={px}, py={py}, ts={ts}, q={q}, iochain={iochain}, '\
             'chipid={chipid}, channelid={channelid}, geom={geom})'.format(**vars(self))
         return string
 
@@ -22,8 +21,6 @@ class HitCollection(object):
     def __init__(self, hits):
         self.hits = hits
         self.nhit = len(self.hits)
-        self.hid_start = min(self.get_hit_attr('hid'))
-        self.hid_end = max(self.get_hit_attr('hid'))
         self.ts_start = min(self.get_hit_attr('ts'))
         self.ts_end = max(self.get_hit_attr('ts'))
         self.q = sum(self.get_hit_attr('q'))
@@ -47,10 +44,11 @@ class HitCollection(object):
             return [getattr(hit, attr) for hit in self.hits]
 
 class Event(HitCollection):
-    ''' A class for a collection of hits associated by the event builder '''
-    def __init__(self, evid, hits):
+    ''' A class for a collection of hits associated by the event builder, contains reconstructed objects '''
+    def __init__(self, evid, hits, reco_obj=[]):
         HitCollection.__init__(self, hits)
         self.evid = evid
+        self.reco_objs = reco_obj
 
 class Track(HitCollection):
     ''' A class representing a straight line segment and associated hits '''

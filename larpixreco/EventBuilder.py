@@ -9,7 +9,6 @@ class EventBuilder(object):
     def __init__(self, filename):
         self.filename = filename
         self.data = HitParser(filename)
-        self.curr_idx = 0
         self.curr_evid = 0
         self.events = []
 
@@ -38,6 +37,15 @@ class EventBuilder(object):
             return False
         return True
 
+    def reset(self):
+        ''' Resets internal loop to start of file '''
+        self.curr_evid = 0
+        self.events = []
+
+    def clear(self):
+        ''' Resets the events list without changing the position in the file '''
+        self.events = []
+
     def store_new_event(self, hits):
         event = Event(evid=self.curr_evid, hits=hits)
         self.events.append(event)
@@ -48,7 +56,7 @@ class EventBuilder(object):
         ''' Parse data file until a new event is found '''
         hits = []
         while len(hits) < EventBuilder.max_ev_len:
-            curr_hit = self.data.get_hit(self.curr_idx)
+            curr_hit = self.data.get_next_sorted_hit(sorted_buffer_length=100)
             if EventBuilder.is_associated(curr_hit, hits):
                 # hit should be associated with others -> store and continue
                 hits.append(curr_hit)
@@ -60,7 +68,6 @@ class EventBuilder(object):
             
             if curr_hit is None:
                 break
-            self.curr_idx += 1
 
         if EventBuilder.is_event(hits):
             # remaining hits are an event -> return
