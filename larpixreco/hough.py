@@ -291,6 +291,9 @@ class HoughParameters(object):
         translation vector to each of its points. This is handled
         by the ``Line.applyTranslation`` function.
 
+        The found_mask boolean array tells which points have already
+        been assigned to a line (True) or have not yet (False).
+
     '''
     def __init__(self):
         self.ndirections = None
@@ -300,6 +303,7 @@ class HoughParameters(object):
         self.translation = None
         self.accumulator = None
         self.dr = None
+        self.found_mask = None
 
 def compute_hough(points, params, op='+'):
     '''
@@ -478,7 +482,10 @@ def iterate_hough_once(points, params, threshold, undo_points=None):
     best_fit_line = get_fit_line(points, params)
     closer, farther, mask = split_by_distance(points, best_fit_line,
             params.dr)
-    if np.max(params.accumulator) < threshold:
+    available_points = points[~params.found_mask]
+    new_found_points, _, _ = split_by_distance(available_points, best_fit_line,
+            params.dr)
+    if len(new_found_points) < threshold:
         closer, farther, mask, best_fit_line = None, None, None, None
     return (closer, farther, params, mask, best_fit_line)
 
@@ -494,8 +501,11 @@ def run_iterative_hough(points, params, threshold):
            fit
 
     '''
+    original_points = points
+    points = original_points.copy()
     lines = {}
-    do_point_again = [True for point in points]
+    params.found_mask = np.array([False for point in points])
+    found_mask = params.found_mask
     undo_points = None
     found_good_line = True
     while found_good_line:
@@ -506,9 +516,9 @@ def run_iterative_hough(points, params, threshold):
         if found_good_line:
             lines[best_fit_line] = np.where(~mask)[0]
             undo_points = points[[i for i in lines[best_fit_line] if
-                    do_point_again[i]]]
+                    not found_mask[i]]]
             for i in lines[best_fit_line]:
-                do_point_again[i] = False
+                found_mask[i] = True
             print('found good line with %d points' % len(closer))
 
     return lines, points, params
