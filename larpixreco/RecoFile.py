@@ -10,10 +10,11 @@ class RecoFile(object):
     dtype = np.int64
     description = '' # to be implemented
 
-    def __init__(self, filename):
+    def __init__(self, filename, write_queue_length=0):
         self.filename = filename
         self.queued_bytes = 0
         self.write_queue = []
+        self.write_queue_length = write_queue_length
         self.file = None
         self.dataset = None
 

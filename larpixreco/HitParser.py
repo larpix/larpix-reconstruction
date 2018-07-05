@@ -20,7 +20,7 @@ class HitParser(object):
         }
     _name2col_map = dict([(name, col) for col, name in _col2name_map.items()])
 
-    def __init__(self, filename):
+    def __init__(self, filename, sort_buffer_length=1):
         self.filename = filename
         self.datafile = h5py.File(self.filename, 'r')
         self.data = self.datafile['data']
@@ -29,12 +29,14 @@ class HitParser(object):
         self.ncols = self.data.shape[1]
 
         self._sort_buffer = None
+        self.sort_buffer_length = sort_buffer_length
         self.sort_buffer_idx = 0
 
     @staticmethod
     def convert_row_to_hit(row_data):
         row_dict = dict([(name, row_data[col]) for name, col in HitParser._name2col_map.items()])
-        hit = Hit(px=row_dict['pixelx'], py=row_dict['pixely'], # FIXME: row index is not currently stored
+        hit = Hit(px=row_dict['pixelx'], py=row_dict['pixely'],
+                  # FIXME: row index is not currently stored
                   ts=row_dict['timestamp'], q=(row_dict['v'] - row_dict['pdst_v']),
                   chipid=row_dict['chipid'], channelid=row_dict['channelid'])
         return hit
@@ -58,11 +60,12 @@ class HitParser(object):
             return None
         return HitParser.convert_row_to_hit(row_data)
 
-    def _load_next_sorted(self, sort_field='timestamp', length=10000):
+    def _load_next_sorted(self, sort_field='timestamp'):
         ''' Load next row into sorted array buffer '''
-        buffer_length = min(length, self.nrows)
+        buffer_length = min(self.sort_buffer_length, self.nrows)
         sort_col = HitParser._name2col_map[sort_field]
         if not self._sort_buffer is None:
+            # sort buffer has been initialized
             self.sort_buffer_idx += 1
             new_row = None
             if self.sort_buffer_idx < self.nrows:
@@ -73,13 +76,14 @@ class HitParser(object):
             else:
                 self._sort_buffer = self._sort_buffer[1:]
         else:
-            sort_data = self.data[:length]
-            self.sort_buffer_idx = length - 1
+            # sort buffer has not been initialized
+            sort_data = self.data[:buffer_length]
+            self.sort_buffer_idx = buffer_length - 1
             self._sort_buffer = sort_data[sort_data[:,sort_col].argsort()]
 
-    def get_next_sorted_hit(self, sort_field='timestamp', sorted_buffer_length=10000):
+    def get_next_sorted_hit(self, sort_field='timestamp'):
         ''' Returns first row in sorted buffer '''
-        self._load_next_sorted(sort_field, sorted_buffer_length)
+        self._load_next_sorted(sort_field)
         if len(self._sort_buffer) == 0:
             return None
         return HitParser.convert_row_to_hit(self._sort_buffer[0])

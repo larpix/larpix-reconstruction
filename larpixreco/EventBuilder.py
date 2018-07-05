@@ -6,9 +6,9 @@ class EventBuilder(object):
     min_ev_len = 5
     dt_cut = int(10e3) # ns
 
-    def __init__(self, filename):
+    def __init__(self, filename, sort_buffer_length=100):
         self.filename = filename
-        self.data = HitParser(filename)
+        self.data = HitParser(filename, sort_buffer_length=sort_buffer_length)
         self.curr_evid = 0
         self.events = []
 
@@ -56,7 +56,7 @@ class EventBuilder(object):
         ''' Parse data file until a new event is found '''
         hits = []
         while len(hits) < EventBuilder.max_ev_len:
-            curr_hit = self.data.get_next_sorted_hit(sorted_buffer_length=100)
+            curr_hit = self.data.get_next_sorted_hit()
             if EventBuilder.is_associated(curr_hit, hits):
                 # hit should be associated with others -> store and continue
                 hits.append(curr_hit)

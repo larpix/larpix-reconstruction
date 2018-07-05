@@ -10,7 +10,7 @@ args = parser.parse_args()
 
 infile = args.infile
 outfile = args.outfile
-eb = EventBuilder(infile)
+eb = EventBuilder(infile, sort_buffer_length=100)
 outfile = RecoFile(outfile)
 
 curr_event = None
@@ -22,11 +22,12 @@ while True:
         print('ev {} hit {}/{}'.format(curr_event.evid, eb.data.sort_buffer_idx, eb.data.nrows),end='\r')
 
     track_reco = TrackReconstruction(curr_event)
-    tracks = track_reco.do_reconstruction()
+    track_reco.do_reconstruction()
     shower_reco = ShowerReconstruction(curr_event)
-    showers = shower_reco.do_reconstruction()
+    shower_reco.do_reconstruction()
 
-    outfile.queue(tracks, type=TrackReconstruction)
-    outfile.queue(showers, type=ShowerReconstruction)
+    for reco_obj in curr_event.reco_objs:
+        outfile.queue(reco_obj, type=type(reco_obj))
+    #print(curr_event)
 
 outfile.flush()
