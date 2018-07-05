@@ -6,7 +6,7 @@ data files, applying reconstruction algorithms, and storing reconstructed object
 
 ## Getting started
 
-An example script for processing a LArPix hdf5 file is been provided in
+An example script for processing a LArPix hdf5 file is provided in
 `process_file.py`. This script demonstrates the process of initializing an
 `EventBuilder`, looping through a data file, and applying a series of
 reconstruction algorithms to the events. The reconstructed objects are then stored
@@ -14,10 +14,10 @@ using a `RecoFile` for further analysis.
 
 The processing occurs like this:
 - An `EventBuilder` is created on the data file of interest. The `EventBuilder`
-(and the underlying `HitParser`) will scan through the data file. The `HitParser`
-implements a sorted buffer to accommodate the nearly-serialized data from LArPix.
-The length of this buffer can be adjusted using the `sort_buffer_length` keyword
-argument of the `EventBuilder`.
+(and the underlying `HitParser`) will scan through the data file and generate
+`Event` objects of related `Hit`s. The `HitParser` implements a sorted buffer to
+accommodate the nearly-serialized data from LArPix. The length of this buffer can
+be adjusted using the `sort_buffer_length` keyword argument of the `EventBuilder`.
 - A `RecoFile` is created to handle the buffering of output data. To save
 reconstruction objects, use `recofile.queue(reco_obj, type=type(reco_obj))`,
 which will put the current object into the write queue of the `RecoFile`.
@@ -28,12 +28,12 @@ sure to perform a `recofile.flush()` after queuing objects.
 using the `eventbuilder.get_next_event()`. This method returns an `Event`
 type until the end of the file is reached, at which point a `None` is returned.
 - A reconstruction is created using each event and is performed using
-`<reconstruction type>.do_reconstruction()`.
+`<reconstruction_type>.do_reconstruction()`.
 - Reconstructed objects are stored in the `event.reco_objs` list and can be
 accessed by any subsequent reconstruction. This facilitates a multi-algorithm
 approach in which reconstructed objects can be merged, extended, or split.
 - After the complete reconstruction chain has been performed, the final
-recontructed objects are added to the `RecoFile` write queue for storage.
+reconstructed objects are added to the `RecoFile` write queue for storage.
 
 ## Hough transform algorithm
 
