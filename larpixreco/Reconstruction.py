@@ -1,12 +1,24 @@
 import numpy as np
 from larpixreco.types import Track, Shower
 import larpixreco.hough as hough
+from functools import wraps
+
+def safe_failure(func):
+    @wraps(func)
+    def new_func(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as expt:
+            print('Error encountered in {}: {}'.format(func.__name__, expt))
+            return None
+    return new_func
 
 class Reconstruction(object):
     ''' Base class for reconstruction methods '''
     def __init__(self, event):
         self.event = event
 
+    @safe_failure
     def do_reconstruction(self):
         pass
 
@@ -15,6 +27,7 @@ class TrackReconstruction(Reconstruction):
     def __init__(self, event):
         Reconstruction.__init__(self, event)
 
+    @safe_failure
     def do_reconstruction(self, hough_threshold=5, hough_ndir=1000, hough_npos=30):
         ''' Perform hough transform algorithm and add Track reco objects to event '''
         x = np.array(self.event['px'])/10 # convert to mm
@@ -30,7 +43,7 @@ class TrackReconstruction(Reconstruction):
         tracks = []
         for line, hit_idcs in lines.items():
             hits = self.event[list(hit_idcs)]
-            tracks += [Track(hits=hits, line=line, hough_params=params)]
+            tracks += [Track(hits=hits, theta=line.theta, phi=line.phi, xp=line.xp, yp=line.yp)]
         self.event.reco_objs += tracks
         return tracks
 
@@ -39,6 +52,7 @@ class ShowerReconstruction(Reconstruction):
     def __init__(self, event):
         Reconstruction.__init__(self, event)
 
+    @safe_failure
     def do_reconstruction(self):
         # Split up event into showers (not implemented)
         pass

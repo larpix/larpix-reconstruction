@@ -186,7 +186,7 @@ class RecoFile(object):
             hits_data_start = self.datafile['hits'].shape[0]
             hits_data_end = hits_data_start + data.nhit
             tracks = [reco_obj for reco_obj in data.reco_objs
-                      if isinstance(reco_obj, Track)]
+                      if isinstance(reco_obj, recotypes.Track)]
             tracks_data_start = self.datafile['tracks'].shape[0]
             tracks_data_end = tracks_data_start + len(tracks)
             # Store event with hits and reconstructed objects referenced

@@ -2,7 +2,6 @@
 Compute the 3D Hough transform from a point cloud.
 Based on the algorithm described in Dalitz, Schramke, Jeltsch [2017].
 '''
-from larpixreco.types import Line
 import numpy as np
 
 class Line(object):
