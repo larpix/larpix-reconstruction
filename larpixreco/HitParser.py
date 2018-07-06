@@ -1,4 +1,5 @@
 import h5py
+import operator
 import numpy as np
 from larpixreco.types import Hit
 
@@ -33,10 +34,9 @@ class HitParser(object):
         self.sort_buffer_idx = 0
 
     @staticmethod
-    def convert_row_to_hit(row_data):
+    def convert_row_to_hit(row_data, hid):
         row_dict = dict([(name, row_data[col]) for name, col in HitParser._name2col_map.items()])
-        hit = Hit(px=row_dict['pixelx'], py=row_dict['pixely'],
-                  # FIXME: row index is not currently stored
+        hit = Hit(hid=hid, px=row_dict['pixelx'], py=row_dict['pixely'],
                   ts=row_dict['timestamp'], q=(row_dict['v'] - row_dict['pdst_v']),
                   chipid=row_dict['chipid'], channelid=row_dict['channelid'])
         return hit
@@ -58,33 +58,39 @@ class HitParser(object):
         row_data = self.get_row_data(row_idx)
         if row_data is None:
             return None
-        return HitParser.convert_row_to_hit(row_data)
+        return HitParser.convert_row_to_hit(row_data, row_idx)
 
-    def _load_next_sorted(self, sort_field='timestamp'):
-        ''' Load next row into sorted array buffer '''
+    def _load_next_sorted(self, sort_field='ts'):
+        '''
+        Load next row into sorted hit buffer
+        Removes first entry in buffer list
+        '''
         buffer_length = min(self.sort_buffer_length, self.nrows)
-        sort_col = HitParser._name2col_map[sort_field]
         if not self._sort_buffer is None:
             # sort buffer has been initialized
             self.sort_buffer_idx += 1
-            new_row = None
+            new_hit = None
             if self.sort_buffer_idx < self.nrows:
-                new_row = self.get_row_data(self.sort_buffer_idx)
-            if not new_row is None:
-                sort_data = np.vstack((self._sort_buffer[1:], new_row))
-                self._sort_buffer = sort_data[sort_data[:,sort_col].argsort()]
+                new_hit = HitParser.convert_row_to_hit(\
+                    self.get_row_data(self.sort_buffer_idx), self.sort_buffer_idx)
+            if not new_hit is None:
+                self._sort_buffer[0] = new_hit
+                self._sort_buffer.sort(key=operator.attrgetter(sort_field))
             else:
+                # EOF reached, start shortening buffer
                 self._sort_buffer = self._sort_buffer[1:]
         else:
             # sort buffer has not been initialized
-            sort_data = self.data[:buffer_length]
             self.sort_buffer_idx = buffer_length - 1
-            self._sort_buffer = sort_data[sort_data[:,sort_col].argsort()]
+            self._sort_buffer = [HitParser.convert_row_to_hit(\
+                    row_data, row_idx) for row_idx, row_data in \
+                                     enumerate(self.data[:buffer_length])]
+            self._sort_buffer.sort(key=operator.attrgetter(sort_field))
 
-    def get_next_sorted_hit(self, sort_field='timestamp'):
+    def get_next_sorted_hit(self, sort_field='ts'):
         ''' Returns first row in sorted buffer '''
         self._load_next_sorted(sort_field)
         if len(self._sort_buffer) == 0:
             return None
-        return HitParser.convert_row_to_hit(self._sort_buffer[0])
+        return self._sort_buffer[0]
 

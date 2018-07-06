@@ -3,7 +3,8 @@ import numpy as np
 class Hit(object):
     ''' The basic primitive type used in larpix-reconstruction represents a single trigger of a larpix channel '''
 
-    def __init__(self, px, py, ts, q, iochain=None, chipid=None, channelid=None, geom=None):
+    def __init__(self, hid, px, py, ts, q, iochain=None, chipid=None, channelid=None, geom=None):
+        self.hid = hid
         self.px = px
         self.py = py
         self.ts = ts
@@ -78,7 +79,10 @@ class HitCollection(object):
         return return_list
 
 class Event(HitCollection):
-    ''' A class for a collection of hits associated by the event builder, contains reconstructed objects '''
+    '''
+    A class for a collection of hits associated by the event builder, contains
+    reconstructed objects
+    '''
     def __init__(self, evid, hits, reco_obj=[]):
         HitCollection.__init__(self, hits)
         self.evid = evid
@@ -91,7 +95,10 @@ class Event(HitCollection):
         return string
 
 class Track(HitCollection):
-    ''' A class representing a straight line segment and associated hits '''
+    '''
+    A class representing a reconstructed straight line segment and associated
+    hits
+    '''
     def __init__(self, hits, line, hough_params=None, vertices=[]):
         HitCollection.__init__(self, hits)
         self.hough_params = hough_params

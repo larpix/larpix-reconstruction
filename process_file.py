@@ -11,7 +11,7 @@ args = parser.parse_args()
 infile = args.infile
 outfile = args.outfile
 eb = EventBuilder(infile, sort_buffer_length=100)
-outfile = RecoFile(outfile)
+outfile = RecoFile(outfile, opt='o')
 
 curr_event = None
 while True:
@@ -26,8 +26,6 @@ while True:
     shower_reco = ShowerReconstruction(curr_event)
     shower_reco.do_reconstruction()
 
-    for reco_obj in curr_event.reco_objs:
-        outfile.queue(reco_obj, type=type(reco_obj))
-    #print(curr_event)
+    outfile.write(curr_event)
 
-outfile.flush()
+
