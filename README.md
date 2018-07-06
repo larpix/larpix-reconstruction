@@ -36,14 +36,13 @@ approach in which reconstructed objects can be merged, extended, or split.
 reconstructed objects are added to the `RecoFile` write queue for storage.
 
 ## Hough transform algorithm
-
 Get started with your set of points saved in a JSON file. The output of
 larpix-scripts/h52json.py will do nicely. The default direction and
 position resolution supplied in this framework work fine for now.
 
 Run the iterative Hough transform algorithm on the points in the file,
-using the threshold to determine how many Hough-space votes are needed
-to accept a track.
+using the threshold to determine how many points are necessary to create
+a track.
 
 ```python
 import run_hough
@@ -56,10 +55,9 @@ cut). ``points`` is a numpy array of all the points in the file.
 ``params`` is a ``hough.HoughParameters`` object which records the basic
 parameters of the Hough transformation.
 
-Note: due to the least-squares fit, the final number
-of points on the track may in principle be below the threshold, or there
-may be a true line which exceeds the threshold but which may not be
-found. These cases are assumed to be rare.
+Note: the iterative algorithm is greedy, so points which are already
+assigned to one track do not contribute to later tracks' thresholds.
+They do, however, contribute to later tracks' least-squares fits.
 
 From here you can plot the reconstructed lines:
 
