@@ -426,8 +426,12 @@ def fit_line_least_squares(points, start_line, dr):
            eigenvalue of the covariance matrix
          - anchor point is the average position of the relevant points
 
+        If there are <= 2 points near the guess line, return None.
+
     '''
     closer, farther, mask = split_by_distance(points, start_line, dr)
+    if len(closer) <= 2:
+        return None
     anchor = np.mean(closer, axis=0)
     evals, evecs = cov_evals_evecs(closer)
     direction_unnorm = (evecs.T)[0]
@@ -446,6 +450,8 @@ def get_fit_line(points, params):
         The line identified by the accumulator bin with the most votes
         is taken as the guess. The x-prime/y-prime bin spacing is taken
         as the dr distance.
+
+        Return None if the fit fails.
 
         Points within dr of the guess line are fed in to the
         least-squares fitter. The best fit line is returned as a
@@ -480,6 +486,9 @@ def iterate_hough_once(points, params, threshold, undo_points=None):
     else:
         params = compute_hough(undo_points, params, op='-')
     best_fit_line = get_fit_line(points, params)
+    if best_fit_line is None:
+        closer, farther, mask, best_fit_line = None, None, None, None
+        return (closer, farther, params, mask, best_fit_line)
     closer, farther, mask = split_by_distance(points, best_fit_line,
             params.dr)
     available_points = points[~params.found_mask]
