@@ -148,7 +148,6 @@ class RecoFile(object):
         if data is None:
             return
         dataset = self.datafile[dataset_name]
-        print(dataset.name,dataset.shape,data.shape)
         dataset[-len(data):] = data
 
     def write(self, data):
@@ -249,8 +248,6 @@ class RecoFile(object):
             events_write_data = self.event_data(data, track_ref=track_ref,
                                                 hit_ref=hit_ref)
         # Write data to file
-        print(hits_write_data)
-        print(events_write_data)
         self._fill(hits_write_data, 'hits')
         self._fill(tracks_write_data, 'tracks')
         self._fill(events_write_data, 'events')

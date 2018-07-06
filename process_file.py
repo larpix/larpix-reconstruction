@@ -27,5 +27,3 @@ while True:
     shower_reco.do_reconstruction()
 
     outfile.write(curr_event)
-
-
