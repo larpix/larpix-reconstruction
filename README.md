@@ -1,6 +1,41 @@
 LArPix Reconstruction
 ===================
 
+This module is a collection of classes and methods to assist reading in LArPix
+data files, applying reconstruction algorithms, and storing reconstructed objects.
+
+## Getting started
+
+An example script for processing a LArPix hdf5 file is provided in
+`process_file.py`. This script demonstrates the process of initializing an
+`EventBuilder`, looping through a data file, and applying a series of
+reconstruction algorithms to the events. The reconstructed objects are then stored
+using a `RecoFile` for further analysis.
+
+The processing occurs like this:
+- An `EventBuilder` is created on the data file of interest. The `EventBuilder`
+(and the underlying `HitParser`) will scan through the data file and generate
+`Event` objects of related `Hit`s. The `HitParser` implements a sorted buffer to
+accommodate the nearly-serialized data from LArPix. The length of this buffer can
+be adjusted using the `sort_buffer_length` keyword argument of the `EventBuilder`.
+- A `RecoFile` is created to handle the buffering of output data. To save
+reconstruction objects, use `recofile.queue(reco_obj, type=type(reco_obj))`,
+which will put the current object into the write queue of the `RecoFile`.
+Once the number of bytes in the write queue passes `recofile.write_queue_length`,
+the queue is flushed to file. To insure that all reco objects are written, be
+sure to perform a `recofile.flush()` after queuing objects.
+- In an 'infinite' loop, events are consecutively extracted from the data
+using the `eventbuilder.get_next_event()`. This method returns an `Event`
+type until the end of the file is reached, at which point a `None` is returned.
+- A reconstruction is created using each event and is performed using
+`<reconstruction_type>.do_reconstruction()`.
+- Reconstructed objects are stored in the `event.reco_objs` list and can be
+accessed by any subsequent reconstruction. This facilitates a multi-algorithm
+approach in which reconstructed objects can be merged, extended, or split.
+- After the complete reconstruction chain has been performed, the final
+reconstructed objects are added to the `RecoFile` write queue for storage.
+
+## Hough transform algorithm
 Get started with your set of points saved in a JSON file. The output of
 larpix-scripts/h52json.py will do nicely. The default direction and
 position resolution supplied in this framework work fine for now.

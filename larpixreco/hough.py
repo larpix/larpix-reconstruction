@@ -1,10 +1,8 @@
 '''
 Compute the 3D Hough transform from a point cloud.
-
 Based on the algorithm described in Dalitz, Schramke, Jeltsch [2017].
 
 '''
-
 import numpy as np
 
 class Line(object):
@@ -37,7 +35,6 @@ class Line(object):
               - Theta is restricted to [0, pi/2]
               - There are additional ambiguities if the line lies exactly
                 in the x-y plane but I don't think they are relevant.
-
         '''
         self.theta = theta
         self.phi = phi
@@ -49,7 +46,6 @@ class Line(object):
             Return a list of n Cartesian points along the line ranging
             from coord=min_coord to coord=max_coord, where coord='x',
             'y', or 'z'.
-
         '''
         theta = self.theta
         phi = self.phi
@@ -91,7 +87,6 @@ class Line(object):
         '''
             Return the perpendicular distance of this line to the given
             point.
-
         '''
         point_on_line = self.points('x', point[0], point[0] + 10, 2)[0]
         theta = self.theta
@@ -112,7 +107,6 @@ class Line(object):
         '''
             Create a new line given the direction of the line and the
             coordinates of a point on the line.
-
         '''
         return cls(theta, phi, *compute_xp_yp(theta, phi, px, py, pz))
 
@@ -121,7 +115,6 @@ class Line(object):
         '''
             Return a new line which has been translated by the given
             translation vector.
-
         '''
         point = original.points('x', 0, 1, 2)[0]
         theta, phi = original.theta, original.phi
@@ -129,13 +122,11 @@ class Line(object):
         xp, yp = compute_xp_yp(theta, phi, px, py, pz)
         return cls(theta, phi, xp, yp)
 
-
 def compute_xp_yp(theta, phi, px, py, pz):
     '''
         Compute xp and yp given the direction vector's angles and the
         (unprimed) coordinates of any point on the line, compute xp and
         yp.
-
     '''
     sintheta = np.sin(theta)
     bx = np.cos(phi)*sintheta
@@ -163,7 +154,6 @@ def center_translate(points):
         Return the translated points, the translation vector, and a
         function to undo the translation, e.g. ``lambda points: points +
         translation``.
-
     '''
     maxes = points.max(axis=0)
     mins = points.min(axis=0)
@@ -180,7 +170,6 @@ def fibonacci_hemisphere(samples):
         (mostly-)evenly spaced points, usable as a set of directions to
         test for the Hough transform. Returns points in Cartesian
         coordinates.
-
     '''
     points = np.empty((samples, 3))
     samples = samples * 2
@@ -208,7 +197,6 @@ def cartesian_to_spherical(points):
     '''
        Convert the given points into spherical coordinates assuming they
        are unit vectors.
-
     '''
     phi = np.arctan2(points[:,1], points[:,0])  # arctan(y/x)
     theta = np.arccos(points[:,2])
@@ -217,7 +205,6 @@ def cartesian_to_spherical(points):
 def get_xp_yp_edges(points, nbins):
     '''
         Given the point cloud, return (xp_edges, yp_edges).
-
     '''
     maxes = points.max(axis=0)
     mins = points.min(axis=0)
@@ -233,7 +220,6 @@ def get_directions(npoints):
         uniformly distributed using the Fibonacci hemisphere algorithm.
 
         Returns a 2D array whose rows are [theta, phi].
-
     '''
     return cartesian_to_spherical(fibonacci_hemisphere(npoints))
 
@@ -241,7 +227,6 @@ def get_line_from_indices(dir_i, xp_i, yp_i, dirs, xp, yp, translation):
     '''
         Return the Line specified by the given direction, xprime,
         yprime, and translation.
-
     '''
     theta, phi = dirs[dir_i]
     xp, yp = xp[xp_i], yp[yp_i]
@@ -293,7 +278,6 @@ class HoughParameters(object):
 
         The found_mask boolean array tells which points have already
         been assigned to a line (True) or have not yet (False).
-
     '''
     def __init__(self):
         self.ndirections = None
@@ -303,6 +287,7 @@ class HoughParameters(object):
         self.translation = None
         self.accumulator = None
         self.dr = None
+
         self.found_mask = None
 
 def compute_hough(points, params, op='+'):
@@ -318,7 +303,6 @@ def compute_hough(points, params, op='+'):
         accumulator array. If ``op == '-'``, then each vote subtracts
         from the accumulator array. The latter option is useful when
         running the iterative algorithm.
-
     '''
     # Prepare the data and accumulator array
     input_points = points
@@ -374,7 +358,6 @@ def compute_hough(points, params, op='+'):
 def line_accumulator_max(params):
     '''
         Return the line specified by the maximum bin in the accumulator.
-
     '''
     indices = np.unravel_index(np.argmax(params.accumulator),
             params.accumulator.shape)
@@ -388,9 +371,6 @@ def points_close_to_line(points, line, dr):
     '''
         Return the indices of the points which are within dr of the
         specified line.
-
-        Indices refer to the "axis 0" index in the points array.
-
     '''
     is_close = []
     for i, point in enumerate(points):
@@ -405,7 +385,6 @@ def split_by_distance(points, line, dr):
         mask array where True means "farther than dr".
 
         Returned as a tuple (closer, farther, mask).
-
     '''
     close_to_line_index = points_close_to_line(points, line, dr)
     mask = np.ones(len(points), dtype=bool)
@@ -420,7 +399,6 @@ def fit_line_least_squares(points, start_line, dr):
     '''
         Return the best fit line determined by least-squares fit to the
         points within dr of start_line.
-
         Specific algorithm used is:
          - direction is the eigenvector corresponding to the largest
            eigenvalue of the covariance matrix
@@ -432,6 +410,7 @@ def fit_line_least_squares(points, start_line, dr):
     closer, farther, mask = split_by_distance(points, start_line, dr)
     if len(closer) <= 2:
         return None
+
     anchor = np.mean(closer, axis=0)
     evals, evecs = cov_evals_evecs(closer)
     direction_unnorm = (evecs.T)[0]
@@ -456,7 +435,6 @@ def get_fit_line(points, params):
         Points within dr of the guess line are fed in to the
         least-squares fitter. The best fit line is returned as a
         ``Line`` object.
-
     '''
     guess_line = line_accumulator_max(params)
     bins = params.position_bins
@@ -479,7 +457,6 @@ def iterate_hough_once(points, params, threshold, undo_points=None):
           in farther (i.e. True means yes, included in farther).
         - line is the ``Line`` object representing the best fit line
           from the Hough transformation + least-squares.
-
     '''
     if params.accumulator is None and undo_points is None:
         params = compute_hough(points, params, op='+')
@@ -501,14 +478,12 @@ def iterate_hough_once(points, params, threshold, undo_points=None):
 def run_iterative_hough(points, params, threshold):
     '''
         Execute the iterative Hough transform on the given points.
-
         Returns ``(lines, points, params)`` where:
          - ``lines`` is a dict mapping ``Line`` ->  [point_index] (list of
            indices of corresponding points in the ``points`` array)
          - ``points`` is a numpy array of shape (npoints, 3) (= x,y,z)
          - ``params`` is the ``HoughParameters`` object associated with the
            fit
-
     '''
     original_points = points
     points = original_points.copy()
@@ -528,6 +503,6 @@ def run_iterative_hough(points, params, threshold):
                     not found_mask[i]]]
             for i in lines[best_fit_line]:
                 found_mask[i] = True
-            print('found good line with %d points' % len(closer))
+            #print('found good line with %d points' % len(closer))
 
     return lines, points, params
