@@ -2,6 +2,8 @@ import numpy as np
 from larpixreco.types import Track, Shower
 import larpixreco.hough as hough
 from functools import wraps
+import sys
+import traceback
 
 def safe_failure(func):
     @wraps(func)
@@ -10,50 +12,54 @@ def safe_failure(func):
             return func(*args, **kwargs)
         except Exception as expt:
             print('Error encountered in {}: {}'.format(func.__name__, expt))
+            traceback.print_tb(sys.exc_info()[2])
+            print()
             return None
     return new_func
 
 class Reconstruction(object):
     ''' Base class for reconstruction methods '''
-    def __init__(self, event):
-        self.event = event
+    def __init__(self):
+        pass
 
     @safe_failure
-    def do_reconstruction(self):
+    def do_reconstruction(self, event):
         pass
 
 class TrackReconstruction(Reconstruction):
     ''' Class for reconstructing events into straight line segments '''
-    def __init__(self, event):
-        Reconstruction.__init__(self, event)
+    def __init__(self, hough_threshold=5, hough_ndir=1000, hough_npos=30):
+        Reconstruction.__init__(self)
+        self.hough_ndir = hough_ndir
+        self.hough_npos = hough_npos
+        self.hough_threshold = hough_threshold
 
     @safe_failure
-    def do_reconstruction(self, hough_threshold=5, hough_ndir=1000, hough_npos=30):
+    def do_reconstruction(self, event):
         ''' Perform hough transform algorithm and add Track reco objects to event '''
-        x = np.array(self.event['px'])/10 # convert to mm
-        y = np.array(self.event['py'])/10 # "
-        z = (np.array(self.event['ts']) - self.event.ts_start)/1000 # convert to us
+        x = np.array(event['px'])/10 # convert to mm
+        y = np.array(event['py'])/10 # "
+        z = (np.array(event['ts']) - event.ts_start)/1000 # convert to us
         points = np.array(list(zip(x,y,z)))
         params = hough.HoughParameters()
-        params.ndirections = hough_ndir
-        params.npositions = hough_npos
-        lines, points, params = hough.run_iterative_hough(points, params,
-            hough_threshold)
+        params.ndirections = self.hough_ndir
+        params.npositions = self.hough_npos
+        lines, points, params = hough.run_iterative_hough(points, params, self.hough_threshold)
 
         tracks = []
         for line, hit_idcs in lines.items():
-            hits = self.event[list(hit_idcs)]
+            hits = event[list(hit_idcs)]
             tracks += [Track(hits=hits, theta=line.theta, phi=line.phi, xp=line.xp, yp=line.yp)]
-        self.event.reco_objs += tracks
+        event.reco_objs += tracks
         return tracks
 
 class ShowerReconstruction(Reconstruction):
     ''' Class for reconstructing events into showers '''
-    def __init__(self, event):
-        Reconstruction.__init__(self, event)
+    def __init__(self):
+        Reconstruction.__init__(self)
 
     @safe_failure
-    def do_reconstruction(self):
+    def do_reconstruction(self, event):
         # Split up event into showers (not implemented)
         pass
 

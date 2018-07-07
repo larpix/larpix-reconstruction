@@ -80,7 +80,7 @@ class RecoFile(object):
                 'iochain' : hit.iochain,
                 'chipid' : hit.chipid,
                 'channelid' : hit.channelid,
-                'geom' : hit.geom, #TODO implement this
+                'geom' : hit.geom,
                 'event_ref' : None,
                 'track_ref' : None
                 }
@@ -161,7 +161,6 @@ class RecoFile(object):
         hits_write_data = None
         tracks_write_data = None
         events_write_data = None
-
         if dtype is recotypes.HitCollection:
             # Store hit collection as hits with no associated parents
             self._resize_by(data.nhit, 'hits')
@@ -236,13 +235,15 @@ class RecoFile(object):
                     orphans += [hit]
                     curr_hits_data_start += 1
                     curr_hits_data_end = curr_hits_data_start + 1
-            if hits_write_data is None:
-                hits_write_data = self.hit_data(orphans, event_ref=event_ref)
-            else:
-                hits_write_data = np.append(hits_write_data, self.hit_data(
-                        orphans, event_ref=event_ref))
+            if len(orphans) > 0:
+                if hits_write_data is None:
+                    hits_write_data = self.hit_data(orphans, event_ref=event_ref)
+                else:
+                    new_hits_write_data = self.hit_data(orphans, event_ref=event_ref)
+                    hits_write_data = np.append(hits_write_data, new_hits_write_data)
             if not curr_hits_data_start == hits_data_end:
                 print('Warning: orphaned hits do not add up to total')
+                print('N orphan: {}, expected: {}'.format(len(orphans), data.nhit - sum([track.nhit for track in tracks])))
                 print('Orphan idx: {}, expected: {}'.format(curr_hits_data_end,
                                                             hits_data_end))
             events_write_data = self.event_data(data, track_ref=track_ref,

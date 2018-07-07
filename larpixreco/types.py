@@ -15,7 +15,7 @@ class Hit(object):
         self.geom = geom
 
     def __str__(self):
-        string = 'Hit(px={px}, py={py}, ts={ts}, q={q}, iochain={iochain}, '\
+        string = 'Hit(hid={hid}, px={px}, py={py}, ts={ts}, q={q}, iochain={iochain}, '\
             'chipid={chipid}, channelid={channelid}, geom={geom})'.format(**vars(self))
         return string
 
@@ -83,10 +83,13 @@ class Event(HitCollection):
     A class for a collection of hits associated by the event builder, contains
     reconstructed objects
     '''
-    def __init__(self, evid, hits, reco_obj=[]):
+    def __init__(self, evid, hits, reco_objs=None):
         HitCollection.__init__(self, hits)
         self.evid = evid
-        self.reco_objs = reco_obj
+        if reco_objs is None:
+            self.reco_objs = []
+        else:
+            self.reco_objs = reco_objs
 
     def __str__(self):
         string = HitCollection.__str__(self)[:-1]
