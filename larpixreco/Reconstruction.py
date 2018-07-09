@@ -1,6 +1,6 @@
 import numpy as np
 from larpixreco.types import Track, Shower
-import larpixreco.hough as hough
+import larpixreco.algorithms.hough as hough
 from functools import wraps
 import sys
 import traceback
