@@ -14,6 +14,7 @@ class RecoFile(object):
         recotypes.Track : 'tracks'
         }
     dataset_desc = { # describes datasets and datatypes
+        'info' : None,
         'hits' : [
             ('hid', 'i8'),
             ('px', 'i8'), ('py', 'i8'), ('ts', 'i8'), ('q', 'i8'),
@@ -29,7 +30,7 @@ class RecoFile(object):
             ('q', 'i8'), ('ts_start', 'i8'), ('ts_end', 'i8')],
         }
 
-    def __init__(self, filename, write_queue_length=10, opt='a'):
+    def __init__(self, filename, write_queue_length=10, opt='o'):
         self.filename = filename
 
         self.queued_bytes = 0
@@ -39,7 +40,7 @@ class RecoFile(object):
 
         self.init_file(opt=opt)
 
-    def init_file(self, opt='a'):
+    def init_file(self, opt):
         # ready file for reading/writing
         if 'o' in opt:
             try:
@@ -53,9 +54,12 @@ class RecoFile(object):
         self.datafile = h5py.File(self.filename, opt)
         for dataset_name, dataset_dtype in self.dataset_desc.items():
             if not dataset_name in self.datafile:
-                self.datafile.create_dataset(dataset_name, (0,),
-                                             maxshape=(None,),
-                                             dtype=dataset_dtype)
+                if not dataset_dtype is None:
+                    self.datafile.create_dataset(dataset_name, (0,),
+                                                 maxshape=(None,),
+                                                 dtype=dataset_dtype)
+                else:
+                    self.datafile.create_group(dataset_name)
 
     @classmethod
     def fill_empty_dict(cls, data_dict, dataset_name):
@@ -121,6 +125,22 @@ class RecoFile(object):
         dataset = self.datafile[dataset_name]
         dataset[-len(data):] = data
 
+    def write_attr(self, dataset=None, **kwargs):
+        '''
+        Write attr to dataset, attr names and values are passed via kwargs
+        Can take either a string or class as argument for writing
+        '''
+        attrs = None
+        if isinstance(dataset, type):
+            attrs = self.datafile[larpixreco_type_dataset[dataset]].attrs
+        elif isinstance(dataset, str):
+            attrs = self.datafile[dataset].attrs
+        elif dataset is None:
+            attrs = self.datafile['info']
+        if attrs is None: return
+        for key, value in kwargs.items():
+            attrs[key] = value
+
     def queue(self, obj, **kwargs):
         '''
         Add a data object to write queue
@@ -148,13 +168,18 @@ class RecoFile(object):
         '''
         Assemble larpixreco data type into correct file formatting and append to file
         Correctly assigns references between parents and daughters
-        Use kwargs to pass additional data fields into the create data
+        Use kwargs to pass additional data fields into the created data
         returns a tuple of (dataset_name, first_row_idx, last_row_idx) such that the data
         written can be accessed via
         RecoFile_instance.datafile[dataset_name][first_row_idx:last_row_idx]
 
         Due to limitations of the h5py region reference type, data should be stored in
         consecutive blocks.
+
+        To extend the file format, one must do the following:
+        - Include the dataset name and dtype description in the class variable dataset_desc
+        - Include a map from larpixreco type object to dataset name in the class variable larpixreco_type_dataset
+        - Update write statement to specifications above, using your new data type
         '''
         dtype = type(obj)
         return_ref = None
@@ -163,6 +188,7 @@ class RecoFile(object):
         hits_write_data = None
         tracks_write_data = None
         events_write_data = None
+
         if dtype is recotypes.HitCollection:
             # Store hit collection as hits
             hits_data_start = self.datafile['hits'].shape[0]
