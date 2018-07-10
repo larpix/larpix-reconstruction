@@ -77,7 +77,7 @@ class HitParser(object):
                 self._sort_buffer[0] = new_hit
                 self._sort_buffer.sort(key=operator.attrgetter(sort_field))
             else:
-                # EOF reached, start shortening buffer
+                # EOF reached, start shortening bufferr
                 self._sort_buffer = self._sort_buffer[1:]
         else:
             # sort buffer has not been initialized
@@ -93,4 +93,7 @@ class HitParser(object):
         if len(self._sort_buffer) == 0:
             return None
         return self._sort_buffer[0]
+
+    def lookahead(self, n):
+        return self._sort_buffer[:n].copy()
 
