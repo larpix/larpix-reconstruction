@@ -76,6 +76,8 @@ class RecoFile(object):
         Automatically generate numpy array used by hdf5
         Additional attributes can be set (or overridden by kwargs)
         '''
+        if not type(larpixreco_type_obj) in cls.larpixreco_type_dataset.keys():
+            raise TypeError('object type is not in list of known types')
         data_dict = vars(larpixreco_type_obj)
         dataset_name = cls.larpixreco_type_dataset[type(larpixreco_type_obj)]
         for value_name, value in kwargs.items():
@@ -211,7 +213,7 @@ class RecoFile(object):
             hit_ref = self.datafile['hits'].regionref[hits_data_start
                                                       :hits_data_end]
             track_ref = self.datafile['tracks'].regionref[tracks_data_start:
-                                                              tracks_data_end
+                                                              tracks_data_end]
             events_write_data = self.event_data(data, track_ref=track_ref,
                                                 hit_ref=hit_ref)
         # Write data to file

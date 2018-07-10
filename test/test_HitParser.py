@@ -6,7 +6,7 @@ import os.path
 test_datafile = os.path.dirname(__file__) + '/test_datafile.h5'
 
 def test_get_next_sorted_hit():
-    n_to_test = 1e5
+    n_to_test = 1e4
     hp = HitParser(test_datafile, sort_buffer_length=2000)
     prev_hits = []
     curr_hit = None
