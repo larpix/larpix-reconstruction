@@ -49,7 +49,7 @@ class EventBuilder(object):
 
     def store_new_event(self, hits):
         event = Event(evid=self.curr_evid, hits=hits)
-        self.events.append(event)
+        self.events += [event]
         self.curr_evid += 1
         return event
 
