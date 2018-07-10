@@ -6,8 +6,8 @@ import os.path
 test_datafile = os.path.dirname(__file__) + '/test_datafile.h5'
 
 def test_get_next_sorted_hit():
-    n_to_test = 1e4
-    hp = HitParser(test_datafile, sort_buffer_length=100)
+    n_to_test = 1e5
+    hp = HitParser(test_datafile, sort_buffer_length=2000)
     prev_hits = []
     curr_hit = None
     counter = 0
@@ -17,7 +17,9 @@ def test_get_next_sorted_hit():
         prev_hits += [curr_hit]
         counter += 1
     dts = [prev_hits[i+1].ts - prev_hits[i].ts for i in range(len(prev_hits)-1)]
-    for i, dt in enumerate(dts):
-        assert dt >= 0, 'Hit {} of {} delta t is {}'.format(i, n_to_test, dt)
+    incorrect_packets = [(i, dt) for i,dt in enumerate(dts) if dt < 0]
+    assert len(incorrect_packets) == 0, '{}/{} incorrectly sorted packets (idx, dt): {}'.format(len(incorrect_packets),
+                                                                                                int(n_to_test),
+                                                                                                incorrect_packets)
 
         
