@@ -123,7 +123,10 @@ class RecoFile(object):
         if data is None:
             return
         dataset = self.datafile[dataset_name]
-        dataset[-len(data):] = data
+        try:
+            dataset[-len(data):] = data
+        except TypeError:
+            dataset[-1:] = data
 
     def write_attr(self, dataset=None, **kwargs):
         '''
@@ -205,11 +208,11 @@ class RecoFile(object):
             self._resize_by(1, 'tracks')
             track_ref = self.datafile['tracks'].regionref[track_id]
 
-            hits_dataset, hits_data_start, hits_data_end = self.write(HitCollection(obj.hits),
+            hits_dataset, hits_data_start, hits_data_end = self.write(recotypes.HitCollection(obj.hits),
                                                                       track_ref=track_ref, **kwargs)
             hit_ref = self.datafile['hits'].regionref[hits_data_start:
                                                           hits_data_end]
-            tracks_write_data = self.track_data(data, track_id=track_id,
+            tracks_write_data = self.track_data(obj, track_id=track_id,
                                                hit_ref=hit_ref, **kwargs)
             return_ref = ('tracks', tracks_data_start, tracks_data_end)
 
@@ -232,17 +235,21 @@ class RecoFile(object):
             #  Catch any hits in event that are not yet stored
             orphans = []
             for hit in obj.hits:
-                if not hit.hid in self.dataset['hits'][hits_data_start:hits_data_end]:
+                if not hit.hid in self.datafile['hits'][hits_data_start:hits_data_end]:
                     orphans += [hit]
             hits_data_end += len(orphans)
-            self.write(HitCollection(orphans), event_ref=event_ref)
+            self.write(recotypes.HitCollection(orphans), event_ref=event_ref)
             hit_ref = self.datafile['hits'].regionref[hits_data_start
                                                       :hits_data_end]
             track_ref = self.datafile['tracks'].regionref[tracks_data_start:
                                                               tracks_data_end]
-            events_write_data = self.event_data(data, track_ref=track_ref,
+            events_write_data = self.event_data(obj, track_ref=track_ref,
                                                 hit_ref=hit_ref)
+            return_ref = ('events', event_idx, event_idx+1)
         # Write data to file
         self._fill(hits_write_data, 'hits')
         self._fill(tracks_write_data, 'tracks')
         self._fill(events_write_data, 'events')
+
+        # Return reference to data
+        return return_ref

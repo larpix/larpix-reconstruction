@@ -24,4 +24,5 @@ while True:
 
     track_reco.do_reconstruction(curr_event)
 
-    outfile.write(curr_event)
+    outfile.queue(curr_event)
+outfile.flush()
