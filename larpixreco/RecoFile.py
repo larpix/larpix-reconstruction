@@ -8,18 +8,23 @@ region_ref = h5py.special_dtype(ref=h5py.RegionReference)
 
 class RecoFile(object):
     ''' Class to handle io from reconstruction hdf5 file '''
+    larpixreco_type_dataset = { # maps between a larpixreco type (see types.py) and a dataset in file
+        recotypes.Hit : 'hits',
+        recotypes.Event : 'events',
+        recotypes.Track : 'tracks'
+        }
     dataset_desc = { # describes datasets and datatypes
         'hits' : [
             ('hid', 'i8'),
             ('px', 'i8'), ('py', 'i8'), ('ts', 'i8'), ('q', 'i8'),
-            ('iochain', 'i8'), ('chipid', 'i8'), ('channelid', 'i8'), 
+            ('iochain', 'i8'), ('chipid', 'i8'), ('channelid', 'i8'),
             ('geom', 'i8'), ('event_ref', region_ref), ('track_ref', region_ref)],
         'events' : [
             ('evid', 'i8'), ('track_ref', region_ref), ('hit_ref', region_ref),
             ('nhit', 'i8'), ('q', 'i8'), ('ts_start', 'i8'), ('ts_end', 'i8')],
         'tracks' : [
             ('track_id','i8'), ('event_ref', region_ref), ('hit_ref', region_ref),
-            ('theta', 'f8'), 
+            ('theta', 'f8'),
             ('phi', 'f8'), ('xp', 'f8'), ('yp', 'f8'), ('nhit', 'i8'),
             ('q', 'i8'), ('ts_start', 'i8'), ('ts_end', 'i8')],
         }
@@ -53,9 +58,10 @@ class RecoFile(object):
                                              maxshape=(None,),
                                              dtype=dataset_dtype)
 
-    def fill_empty_dict(self, data_dict, dataset_name):
+    @classmethod
+    def fill_empty_dict(cls, data_dict, dataset_name):
         ''' Fill with empty values (if necessary) '''
-        for entry_desc in self.dataset_desc[dataset_name]:
+        for entry_desc in cls.dataset_desc[dataset_name]:
             key = entry_desc[0]
             if not key in data_dict:
                 if entry_desc[1] == region_ref:
@@ -65,77 +71,41 @@ class RecoFile(object):
             elif data_dict[key] is None and not entry_desc[1] == region_ref:
                 data_dict[key] = -9999
 
+    @classmethod
+    def larpixreco_type_to_hdf5(cls, larpixreco_type_obj, **kwargs):
+        '''
+        Automatically generate numpy array used by hdf5
+        Additional attributes can be set (or overridden by kwargs)
+        '''
+        data_dict = vars(larpixreco_type_obj)
+        dataset_name = cls.larpixreco_type_dataset[type(larpixreco_type_obj)]
+        for value_name, value in kwargs.items():
+            data_dict[value_name] = value
+        cls.fill_empty_dict(data_dict, dataset_name)
+        data_tuple = tuple(data_dict[entry_desc[0]] for entry_desc in \
+                               cls.dataset_desc[dataset_name])
+        return np.array(data_tuple, dtype=cls.dataset_desc[dataset_name])
+
     def hit_data(self, hits, **kwargs):
         '''
         Generate hit data to be stored in file
         '''
         data_list = []
-        for idx, hit in enumerate(hits):
-            hit_dict = {
-                'hid' : hit.hid,
-                'px' : hit.px,
-                'py' : hit.py,
-                'ts' : hit.ts,
-                'q' : hit.q,
-                'iochain' : hit.iochain,
-                'chipid' : hit.chipid,
-                'channelid' : hit.channelid,
-                'geom' : hit.geom,
-                'event_ref' : None,
-                'track_ref' : None
-                }
-            # store references to other data
-            for value_name, value in kwargs.items():
-                hit_dict[value_name] = value
-            self.fill_empty_dict(hit_dict, 'hits')
-            hit_tuple = tuple(hit_dict[entry_desc[0]] for entry_desc in \
-                                  self.dataset_desc['hits'])
-            data_list += [np.array(hit_tuple, \
-                                       dtype=self.dataset_desc['hits'])]
+        for hit in hits:
+            data_list += [self.larpixreco_type_to_hdf5(hit, **kwargs)]
         return np.array(data_list)
 
     def track_data(self, track, **kwargs):
         '''
         Generate track data to be stored in file
         '''
-        track_dict = {
-            'theta' : track.theta,
-            'phi' : track.phi,
-            'xp' : track.xp,
-            'yp' : track.yp,
-            'nhit' : track.nhit,
-            'q' : track.q,
-            'ts_start' : track.ts_start,
-            'ts_end' : track.ts_end,
-            }
-        # store references to other data
-        for value_name, value in kwargs.items():
-            track_dict[value_name] = value
-        self.fill_empty_dict(track_dict, 'tracks')
-        track_tuple = tuple(track_dict[entry_desc[0]] for entry_desc in \
-                              self.dataset_desc['tracks'])
-        return np.array([np.array(track_tuple, \
-                                      dtype=self.dataset_desc['tracks'])])
+        return self.larpixreco_type_to_hdf5(track, **kwargs)
 
     def event_data(self, event, **kwargs):
         '''
         Generate event data to be stored in file
         '''
-        event_dict = {
-            'evid' : event.evid,
-            'nhit' : event.nhit,
-            'q' : event.q,
-            'ts_start' : event.ts_start,
-            'ts_end' : event.ts_end,
-            }
-        # store other data (data_refs, etc)
-        for value_name, value in kwargs.items():
-            event_dict[value_name] = value
-        self.fill_empty_dict(event_dict, 'events')
-        event_tuple = tuple(event_dict[entry_desc[0]] for entry_desc in \
-                              self.dataset_desc['events'])
-        return np.array([np.array(event_tuple, \
-                                      dtype=self.dataset_desc['events'])])
+        return self.larpixreco_type_to_hdf5(event, **kwargs)
 
     def _resize_by(self, n, dataset_name):
         ''' Extend dataset by n columns '''
@@ -150,108 +120,79 @@ class RecoFile(object):
         dataset = self.datafile[dataset_name]
         dataset[-len(data):] = data
 
-    def write(self, data):
+    def write(self, data, **kwargs):
         '''
-        Assemble hit collection data into correct file formatting
+        Assemble larpixreco data type into correct file formatting and append to file
         Correctly assigns references between parents and daughters
+        Use kwargs to pass additional data fields into the create data
+        returns a tuple of (dataset_name, first_row_idx, last_row_idx) such that the data
+        written can be accessed via
+        RecoFile_instance.datafile[dataset_name][first_row_idx:last_row_idx]
+        
+        Due to limitations of the h5py region reference type, data should be stored in 
+        consecutive blocks.
         '''
         dtype = type(data)
+        return_ref = None
 
         # Initialize data chunks
         hits_write_data = None
         tracks_write_data = None
         events_write_data = None
         if dtype is recotypes.HitCollection:
-            # Store hit collection as hits with no associated parents
-            self._resize_by(data.nhit, 'hits')
-            hits_write_data = self.hit_data(data.hits)
-
-        elif dtype is recotypes.Track:
-            track_id = self.datafile['tracks'].shape[0]
+            # Store hit collection as hits
             hits_data_start = self.datafile['hits'].shape[0]
             hits_data_end = hits_data_start + data.nhit
-            # Store tracks with associated hits and no parent event
             self._resize_by(data.nhit, 'hits')
+            hits_write_data = self.hit_data(data.hits, **kwargs)
+            return_ref = ('hits', hits_data_start, hits_data_end)
+
+        elif dtype is recotypes.Track:
+            # Store track data along with linked hits
+            track_id = self.datafile['tracks'].shape[0]
+            tracks_data_start = self.datafile['tracks'].shape[0]
+            tracks_data_end = tracks_data_start + 1
             self._resize_by(1, 'tracks')
             track_ref = self.datafile['tracks'].regionref[track_id]
+
+            hits_dataset, hits_data_start, hits_data_end = self.write(HitCollection(data.hits), 
+                                                                      track_ref=track_ref, **kwargs)
             hit_ref = self.datafile['hits'].regionref[hits_data_start:
                                                           hits_data_end]
-            hits_write_data = self.hit_data(data.hits, track_ref=track_ref)
             tracks_write_data = self.track_data(data, track_id=track_id,
-                                               hit_ref=hit_ref)
+                                               hit_ref=hit_ref, **kwargs)
+            return_ref = ('tracks', tracks_data_start, tracks_data_end)
 
         elif dtype is recotypes.Event:
             event_idx = self.datafile['events'].shape[0]
-            hits_data_start = self.datafile['hits'].shape[0]
-            hits_data_end = hits_data_start + data.nhit
-            tracks = [reco_obj for reco_obj in data.reco_objs
-                      if isinstance(reco_obj, recotypes.Track)]
-            tracks_data_start = self.datafile['tracks'].shape[0]
-            tracks_data_end = tracks_data_start + len(tracks)
-            # Store event with hits and reconstructed objects referenced
-            self._resize_by(data.nhit, 'hits')
-            self._resize_by(len(tracks), 'tracks')
             self._resize_by(1, 'events')
             #  Generate references for event
             event_ref = self.datafile['events'].regionref[event_idx]
-            hit_ref = self.datafile['hits'].regionref[hits_data_start:
-                                                          hits_data_end]
-            track_ref = self.datafile['tracks'].regionref[tracks_data_start:
-                                                              tracks_data_end]
-            curr_hits_data_start = hits_data_start
-            for track_idx, track in enumerate(tracks):
-                #  Generate references and data for tracks
-                track_id = tracks_data_start + track_idx
-                curr_track_ref = self.datafile['tracks'].regionref[track_id]
-                if hits_write_data is None:
-                    hits_write_data = self.hit_data(track.hits,
-                                                    track_ref=curr_track_ref,
-                                                    event_ref=event_ref)
-                else:
-                    hits_write_data = np.append(hits_write_data, self.hit_data(
-                            track.hits, track_ref=curr_track_ref,
-                            event_ref=event_ref))
-
-                curr_hits_data_end = curr_hits_data_start + track.nhit
-                curr_hit_ref = self.datafile['hits'].regionref[curr_hits_data_start
-                                                               :curr_hits_data_end]
-                curr_hits_data_start = curr_hits_data_end
-                if tracks_write_data is None:
-                    tracks_write_data = self.track_data(track,
-                                                        hit_ref=curr_hit_ref,
-                                                        track_id=track_id,
-                                                        event_ref=event_ref)
-                else:
-                    tracks_write_data = np.append(\
-                        tracks_write_data, self.track_data(track,
-                                                           hit_ref=curr_hit_ref,
-                                                           track_id=track_id,
-                                                           event_ref=event_ref))
-            #  Catch any hits in event that are not associated with reco_objs
+            # Store sub-objects
+            tracks = [reco_obj for reco_obj in data.reco_objs
+                      if isinstance(reco_obj, recotypes.Track)]
+            hits_data_start = self.datafile['hits'].shape[0]
+            hits_data_end = self.datafile['hits'].shape[0]
+            tracks_data_start = self.datafile['tracks'].shape[0]
+            tracks_data_end = self.datafile['tracks'].shape[0]
+            for track in tracks:
+                track_dataset_name, _, tracks_data_end = self.write(track,
+                                                                    event_ref=event_ref)
+                hits_data_end += track.nhit
+            #  Catch any hits in event that are not yet stored
             orphans = []
             for hit in data.hits:
-                if hits_write_data is None or \
-                        not hit.hid in hits_write_data['hid']:
+                if not hit.hid in self.dataset['hits'][hits_data_start:hits_data_end]:
                     orphans += [hit]
-                    curr_hits_data_start += 1
-                    curr_hits_data_end = curr_hits_data_start + 1
-            if len(orphans) > 0:
-                if hits_write_data is None:
-                    hits_write_data = self.hit_data(orphans, event_ref=event_ref)
-                else:
-                    new_hits_write_data = self.hit_data(orphans, event_ref=event_ref)
-                    hits_write_data = np.append(hits_write_data, new_hits_write_data)
-            if not curr_hits_data_start == hits_data_end:
-                print('Warning: orphaned hits do not add up to total')
-                print('N orphan: {}, expected: {}'.format(len(orphans), data.nhit - sum([track.nhit for track in tracks])))
-                print('Orphan idx: {}, expected: {}'.format(curr_hits_data_end,
-                                                            hits_data_end))
+            hits_data_end += len(orphans)
+            self.write(HitCollection(orphans), event_ref=event_ref)
+            hit_ref = self.datafile['hits'].regionref[hits_data_start
+                                                      :hits_data_end]
+            track_ref = self.datafile['tracks'].regionref[tracks_data_start:
+                                                              tracks_data_end
             events_write_data = self.event_data(data, track_ref=track_ref,
                                                 hit_ref=hit_ref)
         # Write data to file
         self._fill(hits_write_data, 'hits')
         self._fill(tracks_write_data, 'tracks')
         self._fill(events_write_data, 'events')
-
-
-
