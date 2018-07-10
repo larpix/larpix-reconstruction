@@ -29,12 +29,11 @@ class RecoFile(object):
             ('q', 'i8'), ('ts_start', 'i8'), ('ts_end', 'i8')],
         }
 
-    def __init__(self, filename, write_queue_length=0, opt='a'):
+    def __init__(self, filename, write_queue_length=10, opt='a'):
         self.filename = filename
 
         self.queued_bytes = 0
-        self.write_queue = dict([(dataset_name, [])
-                                 for dataset_name in self.dataset_desc])
+        self._write_queue = []
         self.write_queue_length = write_queue_length
         self.datafile = None
 
@@ -120,7 +119,30 @@ class RecoFile(object):
         dataset = self.datafile[dataset_name]
         dataset[-len(data):] = data
 
-    def write(self, data, **kwargs):
+    def queue(self, obj, **kwargs):
+        '''
+        Add a data object to write queue
+        Writes to file if queue is full after new object
+        '''
+        self._write_queue += [(obj, kwargs)]
+        if len(self._write_queue) >= self.write_queue_length:
+            self.flush()
+
+    def flush(self):
+        '''
+        Write remaining object in write queue to file and clear queue
+        '''
+        for obj, kwargs in self._write_queue:
+            self.write(obj, **kwargs)
+        self.clear_queue()
+
+    def clear_queue(self):
+        '''
+        Reset write queue
+        '''
+        self._write_queue = []
+
+    def write(self, obj, **kwargs):
         '''
         Assemble larpixreco data type into correct file formatting and append to file
         Correctly assigns references between parents and daughters
@@ -128,11 +150,11 @@ class RecoFile(object):
         returns a tuple of (dataset_name, first_row_idx, last_row_idx) such that the data
         written can be accessed via
         RecoFile_instance.datafile[dataset_name][first_row_idx:last_row_idx]
-        
-        Due to limitations of the h5py region reference type, data should be stored in 
+
+        Due to limitations of the h5py region reference type, data should be stored in
         consecutive blocks.
         '''
-        dtype = type(data)
+        dtype = type(obj)
         return_ref = None
 
         # Initialize data chunks
@@ -142,9 +164,9 @@ class RecoFile(object):
         if dtype is recotypes.HitCollection:
             # Store hit collection as hits
             hits_data_start = self.datafile['hits'].shape[0]
-            hits_data_end = hits_data_start + data.nhit
-            self._resize_by(data.nhit, 'hits')
-            hits_write_data = self.hit_data(data.hits, **kwargs)
+            hits_data_end = hits_data_start + obj.nhit
+            self._resize_by(obj.nhit, 'hits')
+            hits_write_data = self.hit_data(obj.hits, **kwargs)
             return_ref = ('hits', hits_data_start, hits_data_end)
 
         elif dtype is recotypes.Track:
@@ -155,7 +177,7 @@ class RecoFile(object):
             self._resize_by(1, 'tracks')
             track_ref = self.datafile['tracks'].regionref[track_id]
 
-            hits_dataset, hits_data_start, hits_data_end = self.write(HitCollection(data.hits), 
+            hits_dataset, hits_data_start, hits_data_end = self.write(HitCollection(obj.hits),
                                                                       track_ref=track_ref, **kwargs)
             hit_ref = self.datafile['hits'].regionref[hits_data_start:
                                                           hits_data_end]
@@ -169,7 +191,7 @@ class RecoFile(object):
             #  Generate references for event
             event_ref = self.datafile['events'].regionref[event_idx]
             # Store sub-objects
-            tracks = [reco_obj for reco_obj in data.reco_objs
+            tracks = [reco_obj for reco_obj in obj.reco_objs
                       if isinstance(reco_obj, recotypes.Track)]
             hits_data_start = self.datafile['hits'].shape[0]
             hits_data_end = self.datafile['hits'].shape[0]
@@ -181,7 +203,7 @@ class RecoFile(object):
                 hits_data_end += track.nhit
             #  Catch any hits in event that are not yet stored
             orphans = []
-            for hit in data.hits:
+            for hit in obj.hits:
                 if not hit.hid in self.dataset['hits'][hits_data_start:hits_data_end]:
                     orphans += [hit]
             hits_data_end += len(orphans)
