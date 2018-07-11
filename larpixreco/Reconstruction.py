@@ -4,6 +4,8 @@ import larpixreco.algorithms.hough as hough
 from functools import wraps
 import sys
 import traceback
+from larpixreco.RecoLogging import getLogger
+logger = getLogger(__name__)
 
 def safe_failure(func):
     @wraps(func)
@@ -11,9 +13,8 @@ def safe_failure(func):
         try:
             return func(*args, **kwargs)
         except Exception as expt:
-            print('Error encountered in {}: {}'.format(func.__name__, expt))
-            traceback.print_tb(sys.exc_info()[2])
-            print()
+            logger.error('Error encountered in {}: {}'.format(func.__name__, expt))
+            logger.error(traceback.format_exc())
             return None
     return new_func
 
