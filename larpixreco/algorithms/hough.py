@@ -200,7 +200,9 @@ def cartesian_to_spherical(points, constrain=False):
        Convert the given points into spherical coordinates assuming they
        are unit vectors.
 
-       If constrain, restrict theta to [0, pi/2] and phi to [-pi, pi].
+       If constrain, restrict theta to [0, pi/2].
+
+       The range of phi is [-pi, pi].
 
     '''
     if constrain:
