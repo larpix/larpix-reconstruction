@@ -29,7 +29,9 @@ class RecoFile(object):
             ('track_id','i8'), ('event_ref', region_ref), ('hit_ref', region_ref),
             ('theta', 'f8'),
             ('phi', 'f8'), ('xp', 'f8'), ('yp', 'f8'), ('nhit', 'i8'),
-            ('q', 'i8'), ('ts_start', 'i8'), ('ts_end', 'i8')],
+            ('q', 'i8'), ('ts_start', 'i8'), ('ts_end', 'i8'),
+            ('sigma_theta', 'f8'), ('sigma_phi', 'f8'), ('sigma_x', 'f8'),
+            ('sigma_y', 'f8')],
         }
 
     def __init__(self, filename, write_queue_length=10, opt='o'):
@@ -106,7 +108,18 @@ class RecoFile(object):
         '''
         Generate track data to be stored in file
         '''
-        return self.larpixreco_type_to_hdf5(track, **kwargs)
+        if track.cov is not None:
+            s_theta, s_phi, s_x, s_y = np.sqrt(np.diag(track.cov))
+        else:
+            s_theta, s_phi, s_x, s_y = [-1]*4
+        new_kwargs = {
+            'sigma_theta': s_theta,
+            'sigma_phi': s_phi,
+            'sigma_x': s_x,
+            'sigma_y': s_y,
+        }
+        return self.larpixreco_type_to_hdf5(track, **kwargs,
+                **new_kwargs)
 
     def event_data(self, event, **kwargs):
         '''

@@ -50,7 +50,8 @@ class TrackReconstruction(Reconstruction):
         tracks = []
         for line, hit_idcs in lines.items():
             hits = event[list(hit_idcs)]
-            tracks += [Track(hits=hits, theta=line.theta, phi=line.phi, xp=line.xp, yp=line.yp)]
+            tracks += [Track(hits=hits, theta=line.theta, phi=line.phi,
+                xp=line.xp, yp=line.yp, cov=line.cov)]
         event.reco_objs += tracks
         return tracks
 
