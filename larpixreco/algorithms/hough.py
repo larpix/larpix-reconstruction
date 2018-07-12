@@ -423,6 +423,9 @@ def fit_line_least_squares(points, start_line, dr):
     evals, evecs = cov_evals_evecs(closer)
     direction_unnorm = (evecs.T)[0]
     direction_norm = direction_unnorm/np.linalg.norm(direction_unnorm)
+    # Guard against the coordinate degeneracy when parallel to xy plane
+    if abs(direction_norm[2]) < 1e-3:
+        return None
     directions = cartesian_to_spherical(direction_norm.reshape((1,
         3)), constrain=True)
     theta, phi = directions[0]
