@@ -424,6 +424,9 @@ def fit_errors(fit_points, line):
         theta, phi, a_x, a_y. (a_z is by definition 0 in this
         parametrization.)
 
+        If any diagonal element of the covariance matrix is not strictly
+        positive, return None.
+
         The formula for the chi-square for minimizing the distance from
         points $$\{y_i\}$$ to a line specified by anchor $$a$$ and
         direction $$b$$ is:
@@ -460,7 +463,9 @@ def fit_errors(fit_points, line):
     chi2_angles = chi2_cartesian.subs(conversions_b)
     hessian = compute_hessian(chi2_angles, fit_points, line)
     cov = np.linalg.inv(hessian)
-    return cov, hessian
+    if any(np.diag(cov) <= 0):
+        return None
+    return cov
 
 def compute_hessian(chi2, fit_points, line):
     '''
@@ -524,7 +529,7 @@ def fit_line_least_squares(points, start_line, dr):
         3)), constrain=True)
     theta, phi = directions[0]
     best_fit_line = Line.fromDirPoint(theta, phi, *anchor)
-    best_fit_line.cov = fit_errors(closer, best_fit_line)[0]
+    best_fit_line.cov = fit_errors(closer, best_fit_line)
     return best_fit_line
 
 def get_fit_line(points, params):
@@ -569,7 +574,11 @@ def iterate_hough_once(points, params, threshold, undo_points=None):
     else:
         params = compute_hough(undo_points, params, op='-')
     best_fit_line = get_fit_line(points, params)
+    if best_fit_line is not None:
+        print('found line with covariance:')
+        print(best_fit_line.cov)
     if best_fit_line is None:
+        print('did not find a line')
         closer, farther, mask, best_fit_line = None, None, None, None
         return (closer, farther, params, mask, best_fit_line)
     closer, farther, mask = split_by_distance(points, best_fit_line,
