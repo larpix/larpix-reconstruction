@@ -195,11 +195,17 @@ def fibonacci_hemisphere(samples):
 
     return points
 
-def cartesian_to_spherical(points):
+def cartesian_to_spherical(points, constrain=False):
     '''
        Convert the given points into spherical coordinates assuming they
        are unit vectors.
+
+       If constrain, restrict theta to [0, pi/2] and phi to [-pi, pi].
+
     '''
+    if constrain:
+        to_flip = points[:, 2] < 0
+        points = np.where(to_flip, -points.T, points.T).T
     phi = np.arctan2(points[:,1], points[:,0])  # arctan(y/x)
     theta = np.arccos(points[:,2])
     return np.vstack((theta, phi)).T
@@ -418,7 +424,7 @@ def fit_line_least_squares(points, start_line, dr):
     direction_unnorm = (evecs.T)[0]
     direction_norm = direction_unnorm/np.linalg.norm(direction_unnorm)
     directions = cartesian_to_spherical(direction_norm.reshape((1,
-        3)))
+        3)), constrain=True)
     theta, phi = directions[0]
     best_fit_line = Line.fromDirPoint(theta, phi, *anchor)
     return best_fit_line
