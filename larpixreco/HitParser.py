@@ -2,6 +2,8 @@ import h5py
 import operator
 import numpy as np
 from larpixreco.types import Hit
+from larpixreco.RecoLogging import getLogger
+logger = getLogger(__name__)
 
 class HitParser(object):
     ''' A helper for parsing data files into `Hit` types '''

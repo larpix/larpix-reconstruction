@@ -3,6 +3,8 @@ import numpy as np
 import larpixreco.types as recotypes
 import os.path as path
 import os
+from larpixreco.RecoLogging import getLogger
+logger = getLogger(__name__)
 
 region_ref = h5py.special_dtype(ref=h5py.RegionReference)
 

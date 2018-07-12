@@ -1,5 +1,7 @@
 from larpixreco.types import Hit, Event
 from larpixreco.HitParser import HitParser
+from larpixreco.RecoLogging import getLogger
+logger = getLogger(__name__)
 
 class EventBuilder(object):
     max_ev_len = 5000
