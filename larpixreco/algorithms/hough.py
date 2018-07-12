@@ -4,6 +4,8 @@ Based on the algorithm described in Dalitz, Schramke, Jeltsch [2017].
 
 '''
 import numpy as np
+import sympy as sp
+
 from larpixreco.RecoLogging import getLogger
 logger = getLogger(__name__)
 
@@ -42,6 +44,13 @@ class Line(object):
         self.phi = phi
         self.xp = xp
         self.yp = yp
+
+    def coords(self):
+        '''
+            Return a tuple of coordinates (theta, phi, xp, yp).
+
+        '''
+        return (self.theta, self.phi, self.xp, self.yp)
 
     def points(self, coord, min_coord, max_coord, npoints):
         '''
@@ -404,6 +413,88 @@ def split_by_distance(points, line, dr):
     closer[:] = points[~mask]
     farther[:] = points[mask]
     return closer, farther, mask
+
+def fit_errors(fit_points, line):
+    r'''
+        Return the covariance matrix for the fit parameters theta, phi,
+        and a (anchor point) specified by the given line.
+
+        The rows and columns of the matrix returned are in the order
+        theta, phi, a_x, a_y. (a_z is by definition 0 in this
+        parametrization.)
+
+        The formula for the chi-square for minimizing the distance from
+        points $$\{y_i\}$$ to a line specified by anchor $$a$$ and
+        direction $$b$$ is:
+
+        $$ \chi^2 = \sum_i \lvert (I - b^T b)(a - y_i) \rvert^2, $$
+
+        assuming constant errors on each point $$y_i$$. ($$I$$ is the
+        identity matrix.)
+
+        The derivatives and evaluations are computed using the Sympy
+        module for symbolic manipulation.
+
+        There are 2 linear dependencies in the parameter space (a, b),
+        one involving the anchor and one involving the direction. Hence
+        there must be 2 parameters eliminated. I will force $$a_z = 0$$
+        and use angles on the unit sphere to represent $$b$$. Note the
+        first change means tracks parallel to the x-y plane are not
+        representable.
+
+    '''
+    ax, ay, az, bx, by, bz = sp.symbols('ax ay az bx by bz')
+    yx, yy, yz = sp.symbols('yx yy yz')
+    theta, phi = sp.symbols('theta phi')
+    conversions_b = []
+    conversions_b.append((bx, sp.cos(phi)*sp.sin(theta)))
+    conversions_b.append((by, sp.sin(phi)*sp.sin(theta)))
+    conversions_b.append((bz, sp.cos(theta)))
+    avec = sp.Matrix([[ax], [ay], [az]])
+    bvec = sp.Matrix([[bx], [by], [bz]])
+    y = sp.Matrix([[yx], [yy], [yz]])
+    I = sp.eye(3)
+    # Split the chi2 up by each term in the summation
+    chi2_cartesian = ((I - bvec*bvec.T)*(avec-y)).T*(I - bvec*bvec.T)*(avec-y)
+    chi2_angles = chi2_cartesian.subs(conversions_b)
+    hessian = compute_hessian(chi2_angles, fit_points, line)
+    cov = np.linalg.inv(hessian)
+    return cov, hessian
+
+def compute_hessian(chi2, fit_points, line):
+    '''
+        Return the Hessian matrix for the least-squares fit.
+
+    '''
+    theta_best, phi_best, _, _ = line.coords()
+    a_best = line.points('z', 0, 0.1, 3)[0]
+
+    coords = sp.symbols('theta phi ax ay az')
+    coords_deriv = coords[:-1]
+    points = sp.symbols('yx yy yz')
+    subs = {coord:val for coord, val in zip(coords, [theta_best,
+        phi_best, *a_best])}
+    derivs = []
+    result = np.empty((4, 4))
+    for i, coord1 in enumerate(coords_deriv):
+        first_deriv = sp.diff(chi2, coord1)[0]
+        first_deriv_term = first_deriv.subs(subs.items())
+        first_deriv_value = 0
+        for point in fit_points:
+            first_deriv_value += first_deriv_term.evalf(subs={p:pval for
+                p, pval in zip(points, point)})
+        for j, coord2 in enumerate(coords_deriv[i:]):
+            derivs.append((i, i+j, coord1, coord2))
+    for i, j, coord1, coord2 in derivs:
+        term_abstract = sp.diff(chi2, coord1, coord2)[0]
+        term = term_abstract.subs(subs.items())
+        result[i, j] = 0
+        for point in fit_points:
+             point_eval = term.evalf(subs={p:pval for p, pval in
+                zip(points, point)})
+             result[i, j] += point_eval
+        result[j, i] = result[i, j]
+    return 0.5*result
 
 def fit_line_least_squares(points, start_line, dr):
     '''
