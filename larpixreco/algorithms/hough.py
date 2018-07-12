@@ -44,6 +44,7 @@ class Line(object):
         self.phi = phi
         self.xp = xp
         self.yp = yp
+        self.cov = None
 
     def coords(self):
         '''
@@ -523,6 +524,7 @@ def fit_line_least_squares(points, start_line, dr):
         3)), constrain=True)
     theta, phi = directions[0]
     best_fit_line = Line.fromDirPoint(theta, phi, *anchor)
+    best_fit_line.cov = fit_errors(closer, best_fit_line)[0]
     return best_fit_line
 
 def get_fit_line(points, params):
