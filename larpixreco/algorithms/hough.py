@@ -584,11 +584,7 @@ def iterate_hough_once(points, params, threshold, undo_points=None):
     else:
         params = compute_hough(undo_points, params, op='-')
     best_fit_line = get_fit_line(points, params)
-    if best_fit_line is not None:
-        print('found line with covariance:')
-        print(best_fit_line.cov)
     if best_fit_line is None:
-        print('did not find a line')
         closer, farther, mask, best_fit_line = None, None, None, None
         return (closer, farther, params, mask, best_fit_line)
     closer, farther, mask = split_by_distance(points, best_fit_line,
