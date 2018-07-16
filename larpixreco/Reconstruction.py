@@ -34,6 +34,7 @@ class TrackReconstruction(Reconstruction):
         self.hough_ndir = hough_ndir
         self.hough_npos = hough_npos
         self.hough_threshold = hough_threshold
+        self.cache = hough.setup_fit_errors()
 
     @safe_failure
     def do_reconstruction(self, event):
@@ -45,7 +46,8 @@ class TrackReconstruction(Reconstruction):
         params = hough.HoughParameters()
         params.ndirections = self.hough_ndir
         params.npositions = self.hough_npos
-        lines, points, params = hough.run_iterative_hough(points, params, self.hough_threshold)
+        lines, points, params = hough.run_iterative_hough(points,
+                params, self.hough_threshold, self.cache)
 
         tracks = []
         for line, hit_idcs in lines.items():

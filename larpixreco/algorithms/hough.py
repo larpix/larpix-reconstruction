@@ -415,7 +415,42 @@ def split_by_distance(points, line, dr):
     farther[:] = points[mask]
     return closer, farther, mask
 
-def fit_errors(fit_points, line):
+def setup_fit_errors():
+    '''
+        Set up the framework for computing fit errors and return the
+        setup object.
+
+        The object contains precomputed symbolic derivatives.
+
+    '''
+    ax, ay, az, bx, by, bz = sp.symbols('ax ay az bx by bz')
+    yx, yy, yz = sp.symbols('yx yy yz')
+    theta, phi = sp.symbols('theta phi')
+    conversions_b = []
+    conversions_b.append((bx, sp.cos(phi)*sp.sin(theta)))
+    conversions_b.append((by, sp.sin(phi)*sp.sin(theta)))
+    conversions_b.append((bz, sp.cos(theta)))
+    avec = sp.Matrix([[ax], [ay], [az]])
+    bvec = sp.Matrix([[bx], [by], [bz]])
+    y = sp.Matrix([[yx], [yy], [yz]])
+    I = sp.eye(3)
+    # Split the chi2 up by each term in the summation
+    chi2_cartesian = ((I - bvec*bvec.T)*(avec-y)).T*(I - bvec*bvec.T)*(avec-y)
+    chi2_angles = chi2_cartesian.subs(conversions_b)
+    coords = sp.symbols('theta phi ax ay az')
+    coords_deriv = coords[:-1]
+    points = sp.symbols('yx yy yz')
+    deriv_coords = []
+    derivs = []
+    for i, coord1 in enumerate(coords_deriv):
+        for j, coord2 in enumerate(coords_deriv[i:]):
+            deriv_coords.append((i, i+j, coord1, coord2))
+    for i, j, coord1, coord2 in deriv_coords:
+        term_abstract = sp.diff(chi2_angles, coord1, coord2)[0]
+        derivs.append((i, j, coord1, coord2, term_abstract))
+    return derivs
+
+def fit_errors(fit_points, line, precomputed):
     r'''
         Return the covariance matrix for the fit parameters theta, phi,
         and a (anchor point) specified by the given line.
@@ -447,27 +482,15 @@ def fit_errors(fit_points, line):
         representable.
 
     '''
-    ax, ay, az, bx, by, bz = sp.symbols('ax ay az bx by bz')
-    yx, yy, yz = sp.symbols('yx yy yz')
-    theta, phi = sp.symbols('theta phi')
-    conversions_b = []
-    conversions_b.append((bx, sp.cos(phi)*sp.sin(theta)))
-    conversions_b.append((by, sp.sin(phi)*sp.sin(theta)))
-    conversions_b.append((bz, sp.cos(theta)))
-    avec = sp.Matrix([[ax], [ay], [az]])
-    bvec = sp.Matrix([[bx], [by], [bz]])
-    y = sp.Matrix([[yx], [yy], [yz]])
-    I = sp.eye(3)
-    # Split the chi2 up by each term in the summation
-    chi2_cartesian = ((I - bvec*bvec.T)*(avec-y)).T*(I - bvec*bvec.T)*(avec-y)
-    chi2_angles = chi2_cartesian.subs(conversions_b)
-    hessian = compute_hessian(chi2_angles, fit_points, line)
+    if precomputed is None:
+        return None
+    hessian = compute_hessian(fit_points, line, precomputed)
     cov = np.linalg.inv(hessian)
     if any(np.diag(cov) <= 0):
         return None
     return cov
 
-def compute_hessian(chi2, fit_points, line):
+def compute_hessian(fit_points, line, precomputed):
     '''
         Return the Hessian matrix for the least-squares fit.
 
@@ -476,23 +499,11 @@ def compute_hessian(chi2, fit_points, line):
     a_best = line.points('z', 0, 0.1, 3)[0]
 
     coords = sp.symbols('theta phi ax ay az')
-    coords_deriv = coords[:-1]
     points = sp.symbols('yx yy yz')
     subs = {coord:val for coord, val in zip(coords, [theta_best,
         phi_best, *a_best])}
-    derivs = []
     result = np.empty((4, 4))
-    for i, coord1 in enumerate(coords_deriv):
-        first_deriv = sp.diff(chi2, coord1)[0]
-        first_deriv_term = first_deriv.subs(subs.items())
-        first_deriv_value = 0
-        for point in fit_points:
-            first_deriv_value += first_deriv_term.evalf(subs={p:pval for
-                p, pval in zip(points, point)})
-        for j, coord2 in enumerate(coords_deriv[i:]):
-            derivs.append((i, i+j, coord1, coord2))
-    for i, j, coord1, coord2 in derivs:
-        term_abstract = sp.diff(chi2, coord1, coord2)[0]
+    for i, j, coord1, coord2, term_abstract in precomputed:
         term = term_abstract.subs(subs.items())
         result[i, j] = 0
         for point in fit_points:
@@ -529,7 +540,6 @@ def fit_line_least_squares(points, start_line, dr):
         3)), constrain=True)
     theta, phi = directions[0]
     best_fit_line = Line.fromDirPoint(theta, phi, *anchor)
-    best_fit_line.cov = fit_errors(closer, best_fit_line)
     return best_fit_line
 
 def get_fit_line(points, params):
@@ -590,7 +600,7 @@ def iterate_hough_once(points, params, threshold, undo_points=None):
         closer, farther, mask, best_fit_line = None, None, None, None
     return (closer, farther, params, mask, best_fit_line)
 
-def run_iterative_hough(points, params, threshold):
+def run_iterative_hough(points, params, threshold, cache=None):
     '''
         Execute the iterative Hough transform on the given points.
         Returns ``(lines, points, params)`` where:
@@ -613,6 +623,7 @@ def run_iterative_hough(points, params, threshold):
                     undo_points))
         found_good_line = (closer is not None)
         if found_good_line:
+            best_fit_line.cov = fit_errors(closer, best_fit_line, cache)
             lines[best_fit_line] = np.where(~mask)[0]
             undo_points = points[[i for i in lines[best_fit_line] if
                     not found_mask[i]]]
