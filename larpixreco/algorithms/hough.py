@@ -596,6 +596,40 @@ def iterate_hough_once(points, params, threshold, undo_points=None):
         closer, farther, mask, best_fit_line = None, None, None, None
     return (closer, farther, params, mask, best_fit_line)
 
+def get_endpoints(line, points):
+    '''
+        Compute the endpoints of the line based on the given points.
+
+        Project the points onto the line and pick the outermost points.
+
+    '''
+    b = spherical_to_cartesian(line.theta, line.phi)
+    b.shape = (3, 1)
+    projector = b * b.T
+    projections = np.matmul(projector, points.reshape((-1, 3, 1)))
+    projections.shape = ((-1, 3))
+    # The endpoints have projections iwth the greatest and least z
+    # coordinates
+    arg_min_z = np.argmin(projections[:,2])
+    arg_max_z = np.argmax(projections[:,2])
+    start, end = points[arg_min_z], points[arg_max_z]
+    return start, end
+
+
+def spherical_to_cartesian(theta, phi):
+    '''
+        Return a numpy array with the x, y, z coordinates given by theta
+        and phi.
+
+    '''
+    sintheta = np.sin(theta)
+    bx = np.cos(phi)*sintheta
+    by = np.sin(phi)*sintheta
+    bz = np.cos(theta)
+    direction = np.array([bx, by, bz])
+    return direction
+
+
 def run_iterative_hough(points, params, threshold, cache=None):
     '''
         Execute the iterative Hough transform on the given points.
@@ -626,5 +660,10 @@ def run_iterative_hough(points, params, threshold, cache=None):
             for i in lines[best_fit_line]:
                 found_mask[i] = True
             logger.debug('found good line with %d points' % len(closer))
+
+    # Compute the length of each line
+    for line, closer_index in lines.items():
+        closer = points[closer_index]
+        endpoints = get_endpoints(line, closer)
 
     return lines, points, params
