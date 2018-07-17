@@ -8,17 +8,23 @@ parser = argparse.ArgumentParser()
 parser.add_argument('infile')
 parser.add_argument('outfile')
 parser.add_argument('-l', '--logfile', default=None)
+parser.add_argument('-n', '--num', default=-1, type=int, help='num events to process')
 args = parser.parse_args()
 
 infile = args.infile
 outfile = args.outfile
+n_events = args.num
 logger = initializeLogger(level='debug', filename=args.logfile)
 eb = EventBuilder(infile, sort_buffer_length=100)
 track_reco = TrackReconstruction()
 outfile = RecoFile(outfile, opt='o')
 
 curr_event = None
+n_processed = 0
 while True:
+    if n_events >= 0 and n_processed >= n_events:
+        break
+
     curr_event = eb.get_next_event()
     if curr_event is None:
         break
@@ -28,4 +34,5 @@ while True:
     track_reco.do_reconstruction(curr_event)
 
     outfile.queue(curr_event)
+    n_processed += 1
 outfile.flush()
