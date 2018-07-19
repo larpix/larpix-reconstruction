@@ -75,8 +75,9 @@ class RecoFile(object):
                     data_dict[key] = None
                 else:
                     data_dict[key] = -9999
-            elif data_dict[key] is None and not entry_desc[1] == region_ref:
-                data_dict[key] = -9999
+            elif data_dict[key] is None:
+                if not entry_desc[1] == region_ref:
+                    data_dict[key] = -9999
 
     @classmethod
     def larpixreco_type_to_hdf5(cls, larpixreco_type_obj, **kwargs):
@@ -225,8 +226,11 @@ class RecoFile(object):
 
             hits_dataset, hits_data_start, hits_data_end = self.write(recotypes.HitCollection(obj.hits),
                                                                       track_ref=track_ref, **kwargs)
-            hit_ref = self.datafile['hits'].regionref[hits_data_start:
-                                                          hits_data_end]
+            if obj.nhit > 0:
+                hit_ref = self.datafile['hits'].regionref[hits_data_start:
+                                                              hits_data_end]
+            else:
+                hit_ref = None
             tracks_write_data = self.track_data(obj, track_id=track_id,
                                                hit_ref=hit_ref, **kwargs)
             return_ref = ('tracks', tracks_data_start, tracks_data_end)
@@ -254,10 +258,16 @@ class RecoFile(object):
                     orphans += [hit]
             hits_data_end += len(orphans)
             self.write(recotypes.HitCollection(orphans), event_ref=event_ref)
-            hit_ref = self.datafile['hits'].regionref[hits_data_start
-                                                      :hits_data_end]
-            track_ref = self.datafile['tracks'].regionref[tracks_data_start:
-                                                              tracks_data_end]
+            if obj.nhit > 0:
+                hit_ref = self.datafile['hits'].regionref[hits_data_start
+                                                          :hits_data_end]
+            else:
+                hit_ref = None
+            if len(tracks) > 0:
+                track_ref = self.datafile['tracks'].regionref[tracks_data_start:
+                                                                  tracks_data_end]
+            else:
+                track_ref = None
             events_write_data = self.event_data(obj, track_ref=track_ref,
                                                 hit_ref=hit_ref)
             return_ref = ('events', event_idx, event_idx+1)

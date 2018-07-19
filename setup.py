@@ -28,5 +28,5 @@ setup(
         ],
         keywords='dune physics',
         packages=['larpixreco'],
-        install_requires=['pytest', 'h5py', 'numpy'],
+        install_requires=['pytest', 'h5py', 'numpy', 'sympy'],
 )
