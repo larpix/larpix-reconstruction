@@ -45,6 +45,8 @@ class Line(object):
         self.xp = xp
         self.yp = yp
         self.cov = None
+        self.start = None
+        self.end = None
 
     def coords(self):
         '''
@@ -612,8 +614,9 @@ def get_endpoints(line, points):
     # coordinates
     arg_min_z = np.argmin(projections[:,2])
     arg_max_z = np.argmax(projections[:,2])
-    start, end = points[arg_min_z], points[arg_max_z]
-    return start, end
+    start, end = projections[arg_min_z], projections[arg_max_z]
+    start_point, end_point = points[arg_min_z], points[arg_max_z]
+    return start_point, end_point
 
 
 def spherical_to_cartesian(theta, phi):
@@ -654,16 +657,14 @@ def run_iterative_hough(points, params, threshold, cache=None):
         found_good_line = (closer is not None)
         if found_good_line:
             best_fit_line.cov = fit_errors(closer, best_fit_line, cache)
+            start, end = get_endpoints(best_fit_line, closer)
+            best_fit_line.start = start
+            best_fit_line.end = end
             lines[best_fit_line] = np.where(~mask)[0]
             undo_points = points[[i for i in lines[best_fit_line] if
                     not found_mask[i]]]
             for i in lines[best_fit_line]:
                 found_mask[i] = True
             logger.debug('found good line with %d points' % len(closer))
-
-    # Compute the length of each line
-    for line, closer_index in lines.items():
-        closer = points[closer_index]
-        endpoints = get_endpoints(line, closer)
 
     return lines, points, params
