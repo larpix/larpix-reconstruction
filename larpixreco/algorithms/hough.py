@@ -602,7 +602,9 @@ def get_endpoints(line, points):
     '''
         Compute the endpoints of the line based on the given points.
 
-        Project the points onto the line and pick the outermost points.
+        Project the points onto the line and pick the outermost points'
+        projections. The endpoints lie on the geometrical line, not
+        necessarily on any actual data space point.
 
     '''
     b = spherical_to_cartesian(line.theta, line.phi)
@@ -615,8 +617,7 @@ def get_endpoints(line, points):
     arg_min_z = np.argmin(projections[:,2])
     arg_max_z = np.argmax(projections[:,2])
     start, end = projections[arg_min_z], projections[arg_max_z]
-    start_point, end_point = points[arg_min_z], points[arg_max_z]
-    return start_point, end_point
+    return start, end
 
 
 def spherical_to_cartesian(theta, phi):

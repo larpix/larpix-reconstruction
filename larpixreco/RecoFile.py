@@ -31,7 +31,8 @@ class RecoFile(object):
             ('phi', 'f8'), ('xp', 'f8'), ('yp', 'f8'), ('nhit', 'i8'),
             ('q', 'i8'), ('ts_start', 'i8'), ('ts_end', 'i8'),
             ('sigma_theta', 'f8'), ('sigma_phi', 'f8'), ('sigma_x', 'f8'),
-            ('sigma_y', 'f8'), ('length', 'f8')],
+            ('sigma_y', 'f8'), ('length', 'f8'), ('start', '(3,)f8'),
+            ('end', '(3,)f8')],
         }
 
     def __init__(self, filename, write_queue_length=10, opt='o'):
