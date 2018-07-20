@@ -53,7 +53,8 @@ class TrackReconstruction(Reconstruction):
         for line, hit_idcs in lines.items():
             hits = event[list(hit_idcs)]
             tracks += [Track(hits=hits, theta=line.theta, phi=line.phi,
-                xp=line.xp, yp=line.yp, cov=line.cov)]
+                xp=line.xp, yp=line.yp, cov=line.cov, start=line.start,
+                end=line.end)]
         event.reco_objs += tracks
         return tracks
 

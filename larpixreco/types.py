@@ -102,7 +102,8 @@ class Track(HitCollection):
     A class representing a reconstructed straight line segment and associated
     hits
     '''
-    def __init__(self, hits, theta, phi, xp, yp, vertices=[], cov=None):
+    def __init__(self, hits, theta, phi, xp, yp, vertices=[], cov=None,
+            start=None, end=None):
         HitCollection.__init__(self, hits)
         self.theta = theta
         self.phi = phi
@@ -110,6 +111,9 @@ class Track(HitCollection):
         self.yp = yp
         self.vertices = []
         self.cov = cov
+        self.start = start
+        self.end = end
+        self.length = np.linalg.norm(start - end)
 
 class Shower(HitCollection):
     ''' A class representing a shower '''
