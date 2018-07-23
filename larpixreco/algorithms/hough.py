@@ -606,12 +606,21 @@ def get_endpoints(line, points):
         projections. The endpoints lie on the geometrical line, not
         necessarily on any actual data space point.
 
+        To project the points using the operator b * b.T, we must ensure
+        the line actually goes through the origin (i.e. is a true
+        vector subspace), so we will translate the line to the origin,
+        do the projection, and then translate back.
+
     '''
     b = spherical_to_cartesian(line.theta, line.phi)
     b.shape = (3, 1)
     projector = b * b.T
-    projections = np.matmul(projector, points.reshape((-1, 3, 1)))
+
+    point_on_line = line.points('x', points[0,0], points[0,0] + 10, 2)[0]
+    points_translated = points - point_on_line
+    projections = np.matmul(projector, points_translated.reshape((-1, 3, 1)))
     projections.shape = ((-1, 3))
+    projections += point_on_line
     # The endpoints have projections iwth the greatest and least z
     # coordinates
     arg_min_z = np.argmin(projections[:,2])
