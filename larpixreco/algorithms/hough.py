@@ -437,7 +437,7 @@ def setup_fit_errors():
     y = sp.Matrix([[yx], [yy], [yz]])
     I = sp.eye(3)
     # Split the chi2 up by each term in the summation
-    chi2_cartesian = ((I - bvec*bvec.T)*(avec-y)).T*(I - bvec*bvec.T)*(avec-y)
+    chi2_cartesian = ((avec-y).T*(I - bvec*bvec.T)*(avec-y))[0]
     chi2_angles = chi2_cartesian.subs(conversions_b)
     coords = sp.symbols('theta phi ax ay az')
     coords_deriv = coords[:-1]
@@ -448,7 +448,7 @@ def setup_fit_errors():
         for j, coord2 in enumerate(coords_deriv[i:]):
             deriv_coords.append((i, i+j, coord1, coord2))
     for i, j, coord1, coord2 in deriv_coords:
-        term_abstract = sp.diff(chi2_angles, coord1, coord2)[0]
+        term_abstract = sp.diff(chi2_angles, coord1, coord2)
         derivs.append((i, j, coord1, coord2, term_abstract))
     return derivs
 
