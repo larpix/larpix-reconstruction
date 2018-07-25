@@ -224,7 +224,7 @@ def cartesian_to_spherical(points, constrain=False):
     theta = np.arccos(points[:,2])
     return np.vstack((theta, phi)).T
 
-def get_xp_yp_edges(points, nbins):
+def get_xp_yp_edges(points, dr):
     '''
         Given the point cloud, return (xp_edges, yp_edges).
     '''
@@ -232,7 +232,10 @@ def get_xp_yp_edges(points, nbins):
     mins = points.min(axis=0)
     ranges = 0.5 * (maxes - mins)
     range_dist = np.linalg.norm(ranges)
-    xp_edges = np.linspace(-range_dist, range_dist, nbins+1)
+    # Round up range_dist to the nearest integer multiple of dr
+    nbins = int(np.ceil(range_dist/dr))
+    range_dist = nbins * dr
+    xp_edges = np.linspace(-range_dist/2, range_dist/2, nbins+1)
     yp_edges = xp_edges.copy()
     return xp_edges, yp_edges
 
@@ -281,6 +284,10 @@ class HoughParameters(object):
     '''
         Keep track of the parameters used for a series of Hough
         transforms.
+
+        The user should specify ndirections and dr. The other attributes
+        of this object are computed by the various Hough Transformation
+        functions.
 
         The shape of the accumulator array is: (ndirections, npositions,
         npositions).
@@ -343,7 +350,7 @@ def compute_hough(points, params, op='+'):
     xp_edges = None
     yp_edges = None
     if params.position_bins is None:
-        xp_edges, yp_edges = get_xp_yp_edges(points, params.npositions)
+        xp_edges, yp_edges = get_xp_yp_edges(points, params.dr)
         params.position_bins = xp_edges
         params.dr = xp_edges[1] - xp_edges[0]
     else:
