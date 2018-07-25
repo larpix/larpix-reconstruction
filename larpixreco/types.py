@@ -102,14 +102,12 @@ class Track(HitCollection):
     A class representing a reconstructed straight line segment and associated
     hits
     '''
-    def __init__(self, hits, theta, phi, xp, yp, vertices=[], cov=None,
-            start=None, end=None):
+    def __init__(self, hits, theta, phi, xp, yp, cov=None, start=None, end=None):
         HitCollection.__init__(self, hits)
         self.theta = theta
         self.phi = phi
         self.xp = xp
         self.yp = yp
-        self.vertices = []
         self.cov = cov
         self.start = start
         self.end = end
