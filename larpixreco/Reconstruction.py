@@ -29,10 +29,10 @@ class Reconstruction(object):
 
 class TrackReconstruction(Reconstruction):
     ''' Class for reconstructing events into straight line segments '''
-    def __init__(self, hough_threshold=5, hough_ndir=1000, hough_npos=30):
+    def __init__(self, hough_threshold=5, hough_ndir=1000, hough_dr_mm=3):
         Reconstruction.__init__(self)
         self.hough_ndir = hough_ndir
-        self.hough_npos = hough_npos
+        self.hough_dr = hough_dr_mm
         self.hough_threshold = hough_threshold
         self.cache = hough.setup_fit_errors()
 
@@ -45,7 +45,7 @@ class TrackReconstruction(Reconstruction):
         points = np.array(list(zip(x,y,z)))
         params = hough.HoughParameters()
         params.ndirections = self.hough_ndir
-        params.npositions = self.hough_npos
+        params.dr = self.hough_dr
         lines, points, params = hough.run_iterative_hough(points,
                 params, self.hough_threshold, self.cache)
 
@@ -53,7 +53,8 @@ class TrackReconstruction(Reconstruction):
         for line, hit_idcs in lines.items():
             hits = event[list(hit_idcs)]
             tracks += [Track(hits=hits, theta=line.theta, phi=line.phi,
-                xp=line.xp, yp=line.yp, cov=line.cov)]
+                xp=line.xp, yp=line.yp, cov=line.cov, start=line.start,
+                end=line.end)]
         event.reco_objs += tracks
         return tracks
 
