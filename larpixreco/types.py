@@ -68,7 +68,7 @@ class HitCollection(object):
 
     def get_hit_match(self, attr_value_dict):
         '''
-        Returns a list of hits that match the attr_value_dict 
+        Returns a list of hits that match the attr_value_dict
         attr_value_dict = { <hit attribute> : <value of attr>, ...}
         '''
         return_list = []
@@ -83,9 +83,10 @@ class Event(HitCollection):
     A class for a collection of hits associated by the event builder, contains
     reconstructed objects
     '''
-    def __init__(self, evid, hits, reco_objs=None):
+    def __init__(self, evid, hits, t0=None, reco_objs=None):
         HitCollection.__init__(self, hits)
         self.evid = evid
+        self.t0 = t0
         if reco_objs is None:
             self.reco_objs = []
         else:
@@ -93,7 +94,7 @@ class Event(HitCollection):
 
     def __str__(self):
         string = HitCollection.__str__(self)[:-1]
-        string += ', evid={evid}, reco_objs={reco_objs})'.format(\
+        string += ', evid={evid}, reco_objs={reco_objs}, t0={t0})'.format(\
             **vars(self))
         return string
 
