@@ -18,8 +18,8 @@ class HitParser(object):
         7 : 'adc',
         8 : 'timestamp',
         9 : 'serialblock',
-        10 : 'v',
-        11 : 'pdst_v'
+        # 10 : 'v',
+        # 11 : 'pdst_v'
         }
     _name2col_map = dict([(name, col) for col, name in _col2name_map.items()])
 

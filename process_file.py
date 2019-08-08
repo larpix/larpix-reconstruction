@@ -31,7 +31,7 @@ while True:
     if curr_event.evid % 100 == 0:
         logger.info('ev {} hit {}/{}'.format(curr_event.evid, eb.data.sort_buffer_idx, eb.data.nrows))
 
-    track_reco.do_reconstruction(curr_event)
+    # track_reco.do_reconstruction(curr_event)
 
     outfile.queue(curr_event)
     n_processed += 1
