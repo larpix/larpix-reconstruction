@@ -39,7 +39,7 @@ class HitParser(object):
     def convert_row_to_hit(row_data, hid):
         row_dict = dict([(name, row_data[col]) for name, col in HitParser._name2col_map.items()])
         hit = Hit(hid=hid, px=row_dict['pixelx'], py=row_dict['pixely'],
-                  ts=row_dict['timestamp'], q=(row_dict['v'] - row_dict['pdst_v']),
+                  ts=row_dict['timestamp'], q=row_dict['raw_adc'], #(row_dict['v'] - row_dict['pdst_v']),
                   chipid=row_dict['chipid'], channelid=row_dict['channelid'])
         return hit
 
